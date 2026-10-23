@@ -1,5 +1,5 @@
 [
-  {"id": "u_valley",  "username": "valley.ingredients", "name": "Valley Ingredients", "role": "supplier",            "password": "demo"},
+  {"id": "u_valley",  "username": "valley.ingredients", "name": "Valley Ingredients", "role": "supplier",            "password": "demo", "supplier_id": "s_valley"},
   {"id": "u_priya",   "username": "priya.qa",           "name": "Priya Nair",         "role": "qa_specialist",       "password": "demo"},
   {"id": "u_daniel",  "username": "daniel.qam",         "name": "Daniel Okafor",      "role": "qa_manager",          "password": "demo"},
   {"id": "u_marco",   "username": "marco.ship",         "name": "Marco Rossi",        "role": "shipping_supervisor", "password": "demo"},
