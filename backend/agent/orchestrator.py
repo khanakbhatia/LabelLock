@@ -119,19 +119,27 @@ class CaseRun:
         critical = unresolved_critical(fields)
         if critical:
             flags.append("CRITICAL_FIELD_UNRESOLVED")
-        new_ingredient = fields.get("new_ingredient", {})
-        added = allergens_in(new_ingredient.get("value")) if new_ingredient.get("status") == "FOUND" else []
+        def found_allergens(name: str) -> list[dict]:
+            f = fields.get(name, {})
+            return allergens_in(f.get("value")) if f.get("status") == "FOUND" else []
+        added = found_allergens("new_ingredient")
+        ingredient_allergens = {a["allergen"] for a in added}
+        # a new "may contain X" statement: cross-contact, decided by the label's precautionary statement
+        added += [a | {"precautionary": True} for a in found_allergens("may_contain") if a["allergen"] not in ingredient_allergens]
 
         model = raw.get("model", llm.model)  # a refusal fallback may have served the request
+        prompt_version = raw.get("prompt_version", PROMPT_VERSION)  # a replay keeps the version it was recorded with
         self.db.merge(Extraction(case_id=self.case.id, fields=fields, uncertainty_flags=flags, model=model,
-                                 prompt_version=PROMPT_VERSION,
-                                 allergens_added=[{"allergen": a["allergen"], "rule_id": a["rule_id"]} for a in added]))
+                                 prompt_version=prompt_version,
+                                 allergens_added=[{"allergen": a["allergen"], "rule_id": a["rule_id"]}
+                                                  | ({"precautionary": True} if a.get("precautionary") else {}) for a in added]))
         statuses = Counter(f.get("status") for f in fields.values())
-        self.audit("EXTRACTION_COMPLETED", {"model": model, "prompt_version": PROMPT_VERSION, "found": statuses["FOUND"],
+        self.audit("EXTRACTION_COMPLETED", {"model": model, "prompt_version": prompt_version, "found": statuses["FOUND"],
                                             "missing": statuses["MISSING"], "ambiguous": statuses["AMBIGUOUS"],
                                             "evidence_downgraded": downgraded, "uncertainty_flags": flags})
         for a in added:
-            self.audit("RULE_FIRED", {"rule_id": a["rule_id"], "allergen": a["allergen"], "term": a["term"], "input": "new_ingredient"})
+            self.audit("RULE_FIRED", {"rule_id": a["rule_id"], "allergen": a["allergen"], "term": a["term"],
+                                      "input": "may_contain" if a.get("precautionary") else "new_ingredient"})
         if critical:
             return self.escalate("CRITICAL_FIELD_UNRESOLVED", fields=critical)
         return True

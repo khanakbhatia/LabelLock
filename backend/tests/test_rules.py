@@ -116,3 +116,37 @@ def test_rules_package_has_no_llm_imports():
     source = "\n".join(p.read_text() for p in RULES_DIR.rglob("*.py"))
     for forbidden in ("anthropic", "agent.llm", "openai", "import httpx", "requests"):
         assert forbidden not in source
+
+
+PEANUT_PREC = [{"allergen": "peanuts", "rule_id": "ALG-PEANUT", "precautionary": True}]
+
+
+def test_new_may_contain_missing_from_label_is_hold_relabel():
+    d = decide_batch(label(contains=["milk"]), PEANUT_PREC, STOCK, [])
+    assert (d.decision, d.rule_ids) == ("HOLD_RELABEL", ["LBL-MISSING-PRECAUTION"])
+    assert "may contain peanuts" in d.rationale
+
+
+@pytest.mark.parametrize("lbl", [label(may_contain=["peanuts"]), label(contains=["Peanut"])])
+def test_new_may_contain_already_on_label_is_no_impact(lbl):
+    assert decide_batch(lbl, PEANUT_PREC, STOCK, []).decision == "NO_IMPACT"
+
+
+def test_may_contain_breaks_a_free_from_claim():
+    d = decide_batch(label(claims=["nut-free"]), PEANUT_PREC, STOCK, [])
+    assert d.decision == "CLAIM_CONFLICT" and d.rule_ids == ["CLM-NUT-FREE", "LBL-MISSING-PRECAUTION"]
+
+
+def test_ingredient_wins_over_may_contain_for_the_same_allergen():
+    both = SOY + [{"allergen": "soy", "rule_id": "ALG-SOY", "precautionary": True}]
+    d = decide_batch(label(may_contain=["soy"]), both, STOCK, [])
+    assert (d.decision, d.rule_ids) == ("HOLD", ["LBL-PRECAUTIONARY-ONLY"])  # an ingredient is not cured by may-contain
+
+
+def test_precautionary_only_notice_is_not_missing_a_critical_field():
+    from agent.extract import unresolved_critical
+    found = {"status": "FOUND"}
+    assert unresolved_critical({"material": found, "effective_lot": found, "may_contain": found,
+                                "new_ingredient": {"status": "MISSING"}}) == []
+    assert unresolved_critical({"material": found, "effective_lot": found,
+                                "new_ingredient": {"status": "MISSING"}, "may_contain": {"status": "MISSING"}}) == ["new_ingredient"]

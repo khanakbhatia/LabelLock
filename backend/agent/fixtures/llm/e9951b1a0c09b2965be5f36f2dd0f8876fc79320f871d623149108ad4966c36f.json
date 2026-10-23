@@ -12,13 +12,13 @@
       }
     },
     "new_ingredient": {
-      "value": "100% rolled oats (composition unchanged; only the mill changes, to Ridgeway)",
+      "value": "100% rolled oats (composition unchanged)",
       "status": "FOUND",
-      "confidence": 0.85,
+      "confidence": 0.9,
       "evidence": {
         "source": "email",
         "page": null,
-        "quote": "Composition is unchanged: 100% rolled oats."
+        "quote": "Composition is unchanged: 100% rolled oats"
       }
     },
     "effective_lot": {
@@ -38,8 +38,7 @@
       "evidence": null
     }
   },
-  "uncertainty_flags": [
-    "LLM_UNCERTAIN"
-  ],
-  "model": "claude-opus-5-5"
+  "uncertainty_flags": [],
+  "model": "claude-opus-5-5",
+  "prompt_version": "extract-v2"
 }

@@ -159,8 +159,7 @@
     "FG-1042",
     "FG-1043"
    ]
-  },
-  "known_gap": "Prompt defines effective_lot as the first lot of an ongoing change; a one-off lot deviation comes back AMBIGUOUS and escalates."
+  }
  },
  {
   "id": "S05",
@@ -361,8 +360,7 @@
    "untouched": [
     "FG-2601"
    ]
-  },
-  "known_gap": "A certificate stating the lot is soy lecithin is read as AMBIGUOUS (not worded as a change); safe escalation, false alarm."
+  }
  },
  {
   "id": "S12",
@@ -657,8 +655,7 @@
     ]
    },
    "untouched": []
-  },
-  "known_gap": "Precautionary statements: may_contain is extracted but rules only use new_ingredient, so the case escalates instead of HOLD_RELABEL."
+  }
  },
  {
   "id": "S20",

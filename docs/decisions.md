@@ -134,3 +134,19 @@ No contract shape changes; every new response validates against `openapi.yaml`. 
   are the 3 remaining known gaps: S04, S11, S19). Escalation is scored correct when `ESCALATED` is an allowed outcome.
 - `latest.json` from a replay run keeps each scenario's last live-measured `live_agent_seconds` (replays have no real
   Claude latency); `/metrics/roi` reads only those.
+
+## 2026-10-23 — Known gaps closed; GET /scenarios and GET /demo/faults (Anvi)
+
+- Precautionary statements (S19): `may_contain` allergens enter decisions as cross-contact. A new "may contain X"
+  that the label does not already declare (in contains or may-contain) is `HOLD_RELABEL` with rule
+  `LBL-MISSING-PRECAUTION`; it can also break a free-from claim. A notice that only adds a precautionary statement
+  no longer counts as missing `new_ingredient`. Contract: `AllergenAdded.precautionary` (optional boolean, additive).
+- Extraction prompt `extract-v2` (S04, S11): `effective_lot` covers the specific lot of a one-off deviation or
+  certificate, and a plain statement ("lot X is soy lecithin") is not ambiguous. All 17 unique notices were
+  re-recorded with v2 (17 calls to claude-opus-5-5, $0.278) so the suite measures the prompt that ships; fixtures
+  now carry `prompt_version`, and replays report it.
+- Result (live recording run): 20/20 pass, 0 false holds, decision accuracy 1.0, batch recall 1.0, escalation
+  accuracy 1.0, median agent time 4.2 s. No known gaps remain. With v2, S03 and S17 are no longer flagged uncertain;
+  only S16 (injection in the PDF) is, so the hold-and-escalate policy is now pinned by a model-independent agent test.
+- `GET /scenarios` (qa_*, admin): id and notice subject only - titles and expected outcomes would give a manual
+  tester the answer. `GET /demo/faults` (admin, DEMO_MODE): current fault state, via new `GET /sim/admin/faults`.

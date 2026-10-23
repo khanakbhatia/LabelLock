@@ -43,6 +43,12 @@ def log_benchmark(body: BenchmarkBody, user: User = Depends(require_roles(*ROLES
     return benchmark_out(b)
 
 
+@router.get("/scenarios")
+def scenarios(user: User = Depends(require_roles(*ROLES))):
+    # Notice subject only: titles and expected outcomes would give a manual tester the answer.
+    return [{"id": s["id"], "subject": s["subject"]} for s in load_scenarios()]
+
+
 def median(values: list[float]) -> float | None:
     return round(statistics.median(values), 3) if values else None
 

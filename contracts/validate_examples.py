@@ -31,6 +31,8 @@ EXAMPLES = {
     "case_by_message.json": "CaseSummary",
     "benchmark.json": "Benchmark",
     "roi_summary.json": "RoiSummary",
+    "scenario_list.json": ("array", "ScenarioSummary"),
+    "demo_faults.json": "DemoFaults",
 }
 
 # enums.json key -> openapi schema name
