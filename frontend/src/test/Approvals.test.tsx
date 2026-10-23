@@ -30,6 +30,7 @@ describe('approvals queue', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Confirm approve' }));
     expect(await within(row).findByText('APPROVED')).toBeInTheDocument();
     await waitFor(async () => expect((await mocks.getCase('mock:daniel.qam', 'c_001')).actions.find(a => a.id === 'a_012')?.status).toBe('VERIFIED'), { timeout: 5000 });
+    expect((await mocks.listCases('mock:daniel.qam')).find(c => c.id === 'c_001')?.pending_approvals).toBe(0);
   }, 12000);
 
   it('requires a reason before rejection and shows the returned status', async () => {

@@ -52,6 +52,11 @@ export interface ReportBatch { batch_id: string; decision: BatchDecision; final_
 export interface CaseReport { case_id: string; status: CaseStatus; opened_at: string; contained_at: string | null; batches: ReportBatch[]; action_counts: Partial<Record<ActionStatus, number>>; metrics: CaseMetrics & { seconds_to_contained: number | null } }
 export interface IngestEmailRequest { gmail_message_id: string; thread_id: string; from: string; subject: string; body_text: string; received_at: string; attachments: { filename: string; mime_type: 'application/pdf'; content_base64: string }[] }
 export interface IngestEmailResponse extends NoticeCreated { duplicate: boolean }
+export interface BenchmarkCreate { scenario_id: string; mode: 'manual' | 'agent'; seconds: number; batches_found: number; false_holds: number; operator: string }
+export interface Benchmark extends BenchmarkCreate { id: string; created_at: string }
+export interface RoiSummary { measured: { manual_runs: number; agent_runs: number; manual_median_seconds: number | null; agent_median_seconds: number | null; eval: Record<string, number | null> }; assumptions: { key: string; label: string; value: number; unit: string }[] }
+export interface DemoFaults { wms_silent_hold_failure: boolean }
+export interface Ok { ok: true }
 export interface LabelLockApi {
   login(username: string, password: string): Promise<LoginResponse>;
   me(token: string): Promise<User>;
@@ -71,4 +76,8 @@ export interface LabelLockApi {
   rejectAction(token: string, id: string, reason: string): Promise<Action>;
   requestRelease(token: string, caseId: string, body: ReleaseRequest): Promise<Action>;
   recordDisposition(token: string, caseId: string, body: DispositionRequest): Promise<Disposition>;
+  getRoi(token: string): Promise<RoiSummary>;
+  logBenchmark(token: string, body: BenchmarkCreate): Promise<Benchmark>;
+  resetDemo(token: string): Promise<Ok>;
+  setFaults(token: string, body: DemoFaults): Promise<Ok>;
 }

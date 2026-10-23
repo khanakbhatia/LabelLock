@@ -11,7 +11,9 @@ import timelineExample from '../../../contracts/examples/timeline.json';
 import reportExample from '../../../contracts/examples/case_report.json';
 import approvalExample from '../../../contracts/examples/approvals.json';
 import ingestExample from '../../../contracts/examples/ingest_email_response.json';
-import { ApiError, type Action, type ActionStatus, type AuditEvent, type CaseDetail, type CaseReport, type CaseSummary, type Disposition, type ErrorCode, type InboxItem, type IngestEmailResponse, type LabelLockApi, type Notice, type NoticeSummary, type Role, type UncertaintyFlag, type User } from './types';
+import roiExample from '../../../contracts/examples/roi_summary.json';
+import benchmarkExample from '../../../contracts/examples/benchmark.json';
+import { ApiError, type Action, type ActionStatus, type AuditEvent, type Benchmark, type CaseDetail, type CaseReport, type CaseSummary, type Disposition, type ErrorCode, type InboxItem, type IngestEmailResponse, type LabelLockApi, type Notice, type NoticeSummary, type RoiSummary, type Role, type UncertaintyFlag, type User } from './types';
 
 const users: Record<string, User> = {
   'valley.ingredients': { id: 'u_valley', name: 'Valley Ingredients', role: 'supplier' },
@@ -35,6 +37,13 @@ let runConflict = false;
 let casesError = false;
 let caseFlags: UncertaintyFlag[] = [];
 let actionStatus: ActionStatus | null = null;
+let manualRuns: Benchmark[] = [];
+let initialManualRuns: number | null = null;
+let faults = false;
+let demoDisabled = false;
+let roiError = false;
+const roiSeed = roiExample as RoiSummary;
+function median(values: number[]) { const sorted = [...values].sort((a, b) => a - b); const middle = Math.floor(sorted.length / 2); return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2; }
 
 const delay = () => new Promise<void>(resolve => setTimeout(resolve, 300 + Math.floor(Math.random() * 301)));
 function error(status: number, code: ErrorCode, message: string): never {
@@ -115,7 +124,7 @@ export const mocks: LabelLockApi = {
   async listCases(token) {
     await delay(); requireRole(token, ['qa_specialist', 'qa_manager', 'shipping_supervisor']);
     if (casesError) return error(502, 'UPSTREAM_FAILED', 'Cases temporarily unavailable');
-    return [...added.map(n => ({ id: n.case_id, notice_id: n.id, status: runState[n.case_id] ?? 'RECEIVED', supplier: n.supplier, subject: n.subject, opened_at: n.received_at, contained_at: null, duplicate_of: null, pending_approvals: 0, uncertainty_flags: [] } as CaseSummary)), ...(caseList as CaseSummary[]).map(c => ({ ...c, status: runState[c.id] ?? c.status, uncertainty_flags: c.id === 'c_001' ? caseFlags : c.uncertainty_flags }))].sort((a, b) => b.opened_at.localeCompare(a.opened_at));
+    return [...added.map(n => ({ id: n.case_id, notice_id: n.id, status: runState[n.case_id] ?? 'RECEIVED', supplier: n.supplier, subject: n.subject, opened_at: n.received_at, contained_at: null, duplicate_of: null, pending_approvals: 0, uncertainty_flags: [] } as CaseSummary)), ...(caseList as CaseSummary[]).map(c => ({ ...c, status: runState[c.id] ?? c.status, uncertainty_flags: c.id === 'c_001' ? caseFlags : c.uncertainty_flags }))].map(c => ({ ...c, pending_approvals: approvals.filter(a => a.case_id === c.id && a.status === 'PENDING_APPROVAL').length })).sort((a, b) => b.opened_at.localeCompare(a.opened_at));
   },
   async getTimeline(token, id) { await delay(); requireRole(token, ['qa_specialist', 'qa_manager', 'shipping_supervisor']); if (id !== 'c_001') return []; return timelineExample as AuditEvent[]; },
   async getReport(token, id) { await delay(); requireRole(token, ['qa_specialist', 'qa_manager']); if (id !== 'c_001') return error(404, 'NOT_FOUND', 'Report not found'); return reportExample as CaseReport; },
@@ -164,11 +173,37 @@ export const mocks: LabelLockApi = {
     approvals = [action, ...approvals];
     return action;
   },
+  async getRoi(token) {
+    await delay(); requireRole(token, ['qa_specialist', 'qa_manager', 'admin']);
+    if (roiError) return error(502, 'UPSTREAM_FAILED', 'ROI temporarily unavailable');
+    const baseRuns = initialManualRuns ?? roiSeed.measured.manual_runs;
+    const baseMedian = baseRuns ? roiSeed.measured.manual_median_seconds : null;
+    const values = [...(baseMedian === null ? [] : Array(baseRuns).fill(baseMedian)), ...manualRuns.map(run => run.seconds)];
+    return { ...roiSeed, measured: { ...roiSeed.measured, manual_runs: baseRuns + manualRuns.length, manual_median_seconds: values.length ? median(values) : null }, assumptions: roiSeed.assumptions.map(a => ({ ...a })) };
+  },
+  async logBenchmark(token, body) {
+    await delay(); requireRole(token, ['qa_specialist', 'qa_manager', 'admin']);
+    if (!/^S(0[1-9]|1[0-9]|20)$/.test(body.scenario_id)) throw new ApiError(422, { error: { code: 'VALIDATION_ERROR', message: 'Unknown scenario id', request_id: 'req_mock', details: { fields: [{ field: 'body.scenario_id', message: 'not a scenario in backend/scenarios' }] } } });
+    if (!Number.isFinite(body.seconds) || body.seconds < 0 || !Number.isInteger(body.batches_found) || body.batches_found < 0 || !Number.isInteger(body.false_holds) || body.false_holds < 0 || !body.operator.trim()) return error(422, 'VALIDATION_ERROR', 'Invalid benchmark fields');
+    const run = { ...benchmarkExample, ...body, id: `b_${++sequence}`, created_at: new Date().toISOString() } as Benchmark;
+    if (body.mode === 'manual') manualRuns = [...manualRuns, run];
+    return run;
+  },
+  async resetDemo(token) {
+    await delay(); requireRole(token, ['admin']);
+    if (demoDisabled) return error(404, 'NOT_FOUND', 'Demo mode is disabled');
+    generation++; added = []; approvals = approvalExample as Action[]; dispositions = []; runState = {}; faults = false;
+    return { ok: true };
+  },
+  async setFaults(token, body) { await delay(); requireRole(token, ['admin']); if (demoDisabled) return error(404, 'NOT_FOUND', 'Demo mode is disabled'); faults = body.wms_silent_hold_failure; return { ok: true }; },
 };
 
 /** Test hook; never imported by views. */
 export const mockControls = {
-  reset() { generation++; added = []; dispositions = []; sequence = 100; forcedInboxError = false; casesError = false; runConflict = false; caseFlags = []; actionStatus = null; runState = {}; approvals = approvalExample as Action[]; caseByMessageId.clear(); caseByMessageId.set('18c2f4a9b7e01d3a', caseByMessage as CaseSummary); },
+  reset() { generation++; added = []; dispositions = []; sequence = 100; forcedInboxError = false; casesError = false; runConflict = false; caseFlags = []; actionStatus = null; runState = {}; approvals = approvalExample as Action[]; manualRuns = []; initialManualRuns = null; faults = false; demoDisabled = false; roiError = false; caseByMessageId.clear(); caseByMessageId.set('18c2f4a9b7e01d3a', caseByMessage as CaseSummary); },
+  setInitialManualRuns(value: number) { initialManualRuns = value; },
+  setDemoDisabled(value: boolean) { demoDisabled = value; },
+  setRoiError(value: boolean) { roiError = value; },
   setInboxError(value: boolean) { forcedInboxError = value; },
   setCasesError(value: boolean) { casesError = value; },
   setRunConflict(value: boolean) { runConflict = value; },
