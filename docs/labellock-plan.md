@@ -4,8 +4,6 @@ October 23, 2026 · @anvi
 
 > Faithful text transcription of the supplied 24-page PDF. Tables retain their original column layout in preformatted blocks. The architecture illustration is described below.
 
-## A. Blueprint
-
 ### Source page 1
 
 ```text
@@ -18,7 +16,11 @@ October 23, 2026 · @anvi
   (H) come next, once the repository has been inspected.
 
 
-  A. Blueprint
+```
+
+## A. Blueprint
+
+```text
   One product, one case at its centre: every screen is a view of a case created when a
   supplier notice arrives.
 
@@ -173,8 +175,6 @@ October 23, 2026 · @anvi
                                                     status
 ```
 
-## B. Scope and priorities
-
 ### Source page 5
 
 ```text
@@ -183,7 +183,11 @@ October 23, 2026 · @anvi
   contribution is verified physical containment with governed autonomy.
 
 
-  B. Scope and priorities
+```
+
+## B. Scope and priorities
+
+```text
   P0 is the five-minute demo and nothing else; if a P0 item slips, cut P1, never the
   verification or permission checks.
 
@@ -274,8 +278,6 @@ October 23, 2026 · @anvi
      approvals, audit log                                          server-side
 ```
 
-## F. Integration contract (v0.1)
-
 ### Source page 7
 
 ```text
@@ -302,7 +304,11 @@ October 23, 2026 · @anvi
   testing mode with read-only access. LabelLock never sends from that account.
 
 
-  F. Integration contract (v0.1)
+```
+
+## F. Integration contract (v0.1)
+
+```text
   This section is the source for contracts/ in the repo; once committed, the repo copy
   wins and changes go through a pull request both of you approve. JSON is snake_case,
   times are ISO-8601 UTC, IDs are strings.
@@ -628,8 +634,6 @@ October 23, 2026 · @anvi
         read.
 ```
 
-## C. Two-person roadmap
-
 ### Source page 14
 
 ```text
@@ -643,7 +647,11 @@ October 23, 2026 · @anvi
 
 
 
-  C. Two-person roadmap
+```
+
+## C. Two-person roadmap
+
+```text
   About 39 focused hours for Anvi and 43 for Khanak, ordered by dependency rather than
   dated. Gmail is its own milestone, M4, after the safety work. The first milestone is the full
   loop on one notice, not a screen.
@@ -664,8 +672,6 @@ October 23, 2026 · @anvi
         same screens and inherits their bugs.
 ```
 
-## D1. Anvi's first prompt (Claude Code)
-
 ### Source page 16
 
 ```text
@@ -678,7 +684,11 @@ October 23, 2026 · @anvi
         web app.
 
 
-  D1. Anvi's first prompt (Claude Code)
+```
+
+## D1. Anvi's first prompt (Claude Code)
+
+```text
   Goal: inspect the repo, commit the shared contract so Khanak can start, and stand up the
   backend skeleton with server-side roles. Before running it, export this doc as Markdown
   and save it in the repo as docs/labellock-plan.md .
@@ -762,8 +772,6 @@ October 23, 2026 · @anvi
      - Do not add an LLM call, agent logic or simulated systems yet; that is the
 ```
 
-## E1. Khanak's first prompt (ChatGPT coding agent)
-
 ### Source page 18
 
 ```text
@@ -783,7 +791,11 @@ October 23, 2026 · @anvi
   then commit the backend skeleton on anvi/skeleton .
 
 
-  E1. Khanak's first prompt (ChatGPT coding agent)
+```
+
+## E1. Khanak's first prompt (ChatGPT coding agent)
+
+```text
   Goal: the app shell, login with role routing, Supplier Portal and QA Inbox, all running on the
   contract's example data behind one switch. Start once contracts/ is on main (Anvi's
   first commit, roughly 1–2 hours in). Until then, review section F and draft the seed data.
