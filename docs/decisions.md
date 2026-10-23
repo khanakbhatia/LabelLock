@@ -82,3 +82,20 @@ No contract shape changes; every new response validates against `openapi.yaml`. 
 - New audit kinds: `APPROVAL_DECIDED`, `DISPOSITION_RECORDED`, `EXECUTION_DEFERRED`.
 - Holds are shared physical state: a second case on the same lot, without a demo reset, finds the stock already
   HELD by the first case and verifies it as held. Reset before each demo scenario.
+
+## 2026-10-23 — Live Claude extraction (Anvi)
+
+- `LLM_MODE=live` calls Claude (`LLM_MODEL`, default `claude-opus-5-5`, effort `medium`) through the official
+  `anthropic` SDK with a JSON-schema structured output (`output_config.format`), so the reply always parses into the
+  four fields. `LLM_MODE=record` does the same and saves the result as the `MockLLM` fixture for that notice, so a
+  real extraction can be replayed in tests and demos without a key. `mock` stays the default.
+- Refusals: server-side `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`) retries a safety decline on
+  Anthropic's recommended model; `Extraction.model` records the model that actually served it.
+- The PDF is sent as the same pypdf page text the evidence check uses, so verbatim quotes can match; page N in the
+  prompt is page N in evidence.
+- Prompt injection: the notice is only in the user turn, wrapped in tags with a random per-call suffix that the
+  system prompt names as untrusted data. The LLM still cannot act: allergens come from `rules`, writes from the agent,
+  and the evidence check downgrades any quote not found verbatim.
+- Failure handling: refusal, truncation or unparseable output -> every field MISSING + `LLM_UNCERTAIN` (the case
+  escalates); API errors and missing credentials -> `UPSTREAM_FAILED`, the run fails and the case escalates with
+  the reason in the `RUN_FAILED` event. A failed extraction is never recorded as a fixture.

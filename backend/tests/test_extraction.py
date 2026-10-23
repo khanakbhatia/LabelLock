@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from agent.extract import check_evidence, pdf_pages, unresolved_critical
-from agent.llm import FIELDS, LiveLLM, MockLLM, get_llm
+from agent.llm import FIELDS, MockLLM, get_llm
 
 NOTICES = Path(__file__).parent / "fixtures" / "notices"
 BODY = (NOTICES / "vl2291_body.txt").read_text(encoding="utf-8")
@@ -55,13 +55,8 @@ def test_mock_llm_replays_fixture_and_defaults_to_missing():
     rec = llm.extract(content_hash="sha256:dba3a429b302a5c6e7acc5d39f422106cc007d5a251532a9bc6b284afc4f1ee0",
                       email_text=BODY, pages=PAGES)
     assert rec["fields"]["effective_lot"]["value"] == "VL-2291"
+    assert rec["model"] == "mock:claude-opus-5-5"  # real Claude recording, replayed
+    assert check_evidence(rec["fields"], BODY, PAGES)[1] == []  # its quotes are verbatim
     unknown = MockLLM().extract(content_hash="sha256:unknown", email_text="", pages=[])
     assert set(unknown["fields"]) == set(FIELDS)
     assert all(f["status"] == "MISSING" for f in unknown["fields"].values())
-
-
-def test_live_llm_is_a_clear_todo():
-    with pytest.raises(NotImplementedError, match="M2"):
-        LiveLLM().extract(content_hash="x", email_text="", pages=[])
-    with pytest.raises(ValueError):
-        get_llm("other")

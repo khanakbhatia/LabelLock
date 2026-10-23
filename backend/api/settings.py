@@ -30,6 +30,7 @@ class Settings:
     sim_base_url: str = "http://localhost:8000"  # where adapters reach /sim/*
     seed_dir: Path = REPO_ROOT / "data" / "seed"
     llm_mode: str = "mock"
+    llm_model: str = "claude-opus-5-5"
 
     @property
     def cors_origins(self) -> list[str]:
@@ -51,4 +52,5 @@ class Settings:
             sim_base_url=env.get("SIM_BASE_URL", cls.sim_base_url),
             seed_dir=Path(env.get("SEED_DIR", str(cls.seed_dir))),
             llm_mode=env.get("LLM_MODE", cls.llm_mode),
+            llm_model=env.get("LLM_MODEL", cls.llm_model),
         )
