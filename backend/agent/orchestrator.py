@@ -107,7 +107,7 @@ class CaseRun:
         notice = self.db.get(Notice, self.case.notice_id)
         paths = self.db.scalars(select(NoticeAttachment.path).where(NoticeAttachment.notice_id == notice.id).order_by(NoticeAttachment.id))
         pages = pdf_pages(list(paths))
-        llm = get_llm(self.settings.llm_mode)
+        llm = get_llm(self.settings.llm_mode, self.settings.llm_model)
         raw = llm.extract(content_hash=notice.content_hash, email_text=notice.body, pages=pages)
         fields, downgraded = check_evidence(raw["fields"], notice.body, pages)
         # The LLM may only add flags we know; anything else becomes a generic uncertainty flag.
@@ -120,11 +120,12 @@ class CaseRun:
         new_ingredient = fields.get("new_ingredient", {})
         added = allergens_in(new_ingredient.get("value")) if new_ingredient.get("status") == "FOUND" else []
 
-        self.db.merge(Extraction(case_id=self.case.id, fields=fields, uncertainty_flags=flags, model=llm.model,
+        model = raw.get("model", llm.model)  # a refusal fallback may have served the request
+        self.db.merge(Extraction(case_id=self.case.id, fields=fields, uncertainty_flags=flags, model=model,
                                  prompt_version=PROMPT_VERSION,
                                  allergens_added=[{"allergen": a["allergen"], "rule_id": a["rule_id"]} for a in added]))
         statuses = Counter(f.get("status") for f in fields.values())
-        self.audit("EXTRACTION_COMPLETED", {"model": llm.model, "prompt_version": PROMPT_VERSION, "found": statuses["FOUND"],
+        self.audit("EXTRACTION_COMPLETED", {"model": model, "prompt_version": PROMPT_VERSION, "found": statuses["FOUND"],
                                             "missing": statuses["MISSING"], "ambiguous": statuses["AMBIGUOUS"],
                                             "evidence_downgraded": downgraded, "uncertainty_flags": flags})
         for a in added:
