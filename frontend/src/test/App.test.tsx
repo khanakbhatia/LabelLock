@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../auth';
 import { App } from '../App';
-import { mockControls } from '../api/mocks';
+import { mockControls, mocks } from '../api/mocks';
 import inboxExample from '../../../contracts/examples/inbox.json';
 
 function start(path = '/login') {
@@ -83,13 +83,15 @@ describe('shared approval screen', () => {
   it('shows the backend 403 to a QA specialist', async () => {
     localStorage.setItem('labellock_token', 'mock:priya.qa');
     start('/approvals');
-    await userEvent.click(await screen.findByRole('button', { name: /attempt approval/i }, { timeout: 3000 }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('FORBIDDEN');
+    expect(await screen.findByText(/A QA manager must approve or reject/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument();
+    await expect(mocks.approveAction('mock:priya.qa', 'a_012')).rejects.toMatchObject({ status: 403, response: { error: { code: 'FORBIDDEN', request_id: expect.any(String) } } });
   });
   it('lets a QA manager approve through the API', async () => {
     localStorage.setItem('labellock_token', 'mock:daniel.qam');
     start('/approvals');
-    await userEvent.click(await screen.findByRole('button', { name: 'Approve' }, { timeout: 3000 }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve' }, { timeout: 4000 }));
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm approve' }));
     expect(await screen.findByRole('status', {}, { timeout: 3000 })).toHaveTextContent('APPROVED');
   });
 });

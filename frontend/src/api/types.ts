@@ -7,6 +7,7 @@ export type ActionStatus = 'PROPOSED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJEC
 export type Role = 'supplier' | 'qa_specialist' | 'qa_manager' | 'shipping_supervisor' | 'admin' | 'agent';
 export type ErrorCode = 'UNAUTHENTICATED' | 'FORBIDDEN' | 'NOT_FOUND' | 'VALIDATION_ERROR' | 'CONFLICT' | 'POLICY_VIOLATION' | 'UPSTREAM_FAILED' | 'NOT_IMPLEMENTED' | 'INTERNAL_ERROR';
 export type UncertaintyFlag = 'SUPPLIER_UNVERIFIED' | 'LLM_UNCERTAIN' | 'EVIDENCE_MISMATCH' | 'CRITICAL_FIELD_UNRESOLVED';
+export type DispositionValue = 'RELABEL' | 'REWORK' | 'DESTROY' | 'RETURN_TO_SUPPLIER' | 'RELEASE_AS_IS';
 export interface ErrorResponse { error: { code: ErrorCode; message: string; details?: Record<string, unknown> | null; request_id: string } }
 export class ApiError extends Error {
   constructor(public readonly status: number, public readonly response: ErrorResponse) {
@@ -27,6 +28,11 @@ export interface Notice { id: string; supplier_id: string | null; supplier: stri
 export interface NoticeInput { subject: string; body: string; attachment: File }
 export interface CaseSummary { id: string; notice_id: string; status: CaseStatus; supplier: string; subject: string; opened_at: string; contained_at: string | null; duplicate_of: string | null; pending_approvals: number; uncertainty_flags: UncertaintyFlag[] }
 export interface Action { id: string; case_id?: string; type: ActionType; target: Record<string, string>; status: ActionStatus; requires_approval: boolean; requested_by?: string; idempotency_key?: string; created_at?: string; result?: Record<string, unknown> | null }
+export interface ApproveRequest { comment?: string }
+export interface RejectRequest { reason: string }
+export interface ReleaseRequest { batch_id: string; reason: string }
+export interface DispositionRequest { batch_id: string; disposition: DispositionValue; evidence: string }
+export interface Disposition extends DispositionRequest { id: string; case_id: string; recorded_by: string; recorded_at: string }
 export interface NoticeRef { id: string; supplier: string; subject: string; received_at: string }
 export interface Evidence { source: 'email' | 'attachment'; page: number | null; quote: string }
 export interface ExtractedField { value: string | null; status: FieldStatus; confidence: number | null; evidence: Evidence | null }
@@ -60,7 +66,9 @@ export interface LabelLockApi {
   getTimeline(token: string, id: string): Promise<AuditEvent[]>;
   getReport(token: string, id: string): Promise<CaseReport>;
   runCase(token: string, id: string): Promise<RunStarted>;
-  listApprovals(token: string): Promise<Action[]>;
-  approveAction(token: string, id: string, comment: string): Promise<Action>;
+  listApprovals(token: string, status?: ActionStatus): Promise<Action[]>;
+  approveAction(token: string, id: string, comment?: string): Promise<Action>;
   rejectAction(token: string, id: string, reason: string): Promise<Action>;
+  requestRelease(token: string, caseId: string, body: ReleaseRequest): Promise<Action>;
+  recordDisposition(token: string, caseId: string, body: DispositionRequest): Promise<Disposition>;
 }

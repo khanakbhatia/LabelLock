@@ -37,7 +37,9 @@ export const client: LabelLockApi = {
   getTimeline: (token, id) => request(`/cases/${encodeURIComponent(id)}/timeline`, token),
   getReport: (token, id) => request(`/cases/${encodeURIComponent(id)}/report`, token),
   runCase: (token, id) => request(`/cases/${encodeURIComponent(id)}/run`, token, { method: 'POST' }),
-  listApprovals: token => request('/approvals?status=PENDING_APPROVAL', token),
-  approveAction: (token, id, comment) => request(`/actions/${encodeURIComponent(id)}/approve`, token, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ comment }) }),
+  listApprovals: (token, status) => request(`/approvals${status ? `?status=${encodeURIComponent(status)}` : ''}`, token),
+  approveAction: (token, id, comment) => request(`/actions/${encodeURIComponent(id)}/approve`, token, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(comment === undefined ? {} : { comment }) }),
   rejectAction: (token, id, reason) => request(`/actions/${encodeURIComponent(id)}/reject`, token, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) }),
+  requestRelease: (token, caseId, body) => request(`/cases/${encodeURIComponent(caseId)}/release-requests`, token, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  recordDisposition: (token, caseId, body) => request(`/cases/${encodeURIComponent(caseId)}/dispositions`, token, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
 };

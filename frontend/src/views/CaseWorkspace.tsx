@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 import { api, ApiError, type AuditEvent, type CaseDetail, type CaseReport, type Extraction, type Trace } from '../api';
 import { useAuth } from '../auth';
 import { Chip, flagLabel, formatTime } from './caseDisplay';
+import { ApprovalDecision, describeAction } from './ApprovalDecision';
+import { HeldBatchControls } from './HeldBatchControls';
 import styles from './Workspace.module.css';
 
 type Tab = 'Analysis' | 'Batch Detective' | 'Label Check' | 'Actions' | 'Timeline';
@@ -42,6 +44,7 @@ export function CaseWorkspace() {
   const [report, setReport] = useState<CaseReport | null>(null);
   const [reportError, setReportError] = useState('');
   const [polling, setPolling] = useState(false);
+  const [approvalPoll, setApprovalPoll] = useState<string | null>(null);
   const pollStart = useRef(0);
   const load = useCallback(async () => {
     if (!token) return;
@@ -63,6 +66,24 @@ export function CaseWorkspace() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, [caseInfo?.status, id, polling, token]);
+  useEffect(() => {
+    if (!approvalPoll || !token) return;
+    let active = true;
+    const deadline = Date.now() + 30000;
+    const timer = window.setInterval(async () => {
+      if (Date.now() >= deadline) { window.clearInterval(timer); if (active) { setApprovalPoll(null); setMessage('Action is still processing. Refresh this case to check again.'); } return; }
+      try {
+        const updated = await api.getCase(token, id);
+        if (!active) return;
+        setCaseInfo(updated);
+        const status = updated.actions.find(action => action.id === approvalPoll)?.status;
+        if (status === 'VERIFIED' || status === 'VERIFY_FAILED' || status === 'ESCALATED') {
+          window.clearInterval(timer); setApprovalPoll(null); setMessage(`Action ${approvalPoll}: ${label(status)}.`);
+        }
+      } catch (reason) { if (active) { window.clearInterval(timer); setApprovalPoll(null); setError(messageFor(reason, 'Could not check action status.')); } }
+    }, 1000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [approvalPoll, id, token]);
   const loadTimeline = useCallback(async () => { if (!token) return; setTimelineError(''); try { setEvents(await api.getTimeline(token, id)); } catch (reason) { setTimelineError(messageFor(reason, 'Could not load timeline.')); } }, [id, token]);
   useEffect(() => { if (tab === 'Timeline' && events === null) void loadTimeline(); }, [tab, events, loadTimeline]);
   async function run() {
@@ -73,6 +94,15 @@ export function CaseWorkspace() {
     finally { setBusy(false); }
   }
   async function loadReport() { if (!token) return; setReportError(''); try { setReport(await api.getReport(token, id)); } catch (reason) { setReportError(messageFor(reason, 'Could not load report.')); } }
+  const heldBatches = [...new Set(caseInfo?.trace?.batches.filter(batch => batch.locations.some(location => location.status === 'HELD')).map(batch => batch.batch_id) ?? [])];
+  const decided = (updated: CaseDetail['actions'][number]) => {
+    setCaseInfo(current => current ? { ...current, actions: current.actions.map(action => action.id === updated.id ? updated : action) } : current);
+    setMessage(`${updated.id}: ${label(updated.status)}.`);
+    if (updated.status === 'APPROVED') setApprovalPoll(updated.id);
+  };
+  const releaseRequested = (action: CaseDetail['actions'][number]) => {
+    setCaseInfo(current => current ? { ...current, actions: [...current.actions, action] } : current);
+  };
   return <main className={styles.page}>
     <Link to={user?.role === 'shipping_supervisor' ? '/cases' : '/inbox'}>← {user?.role === 'shipping_supervisor' ? 'Cases' : 'QA inbox'}</Link><h1>Case workspace</h1>
     {error && <p role="alert" className={styles.error}>{error}</p>}{message && <p role="status" className={styles.success}>{message}</p>}
@@ -86,7 +116,7 @@ export function CaseWorkspace() {
         {tab === 'Analysis' && <Analysis extraction={caseInfo.extraction} />}
         {tab === 'Batch Detective' && <Detective trace={caseInfo.trace} />}
         {tab === 'Label Check' && (caseInfo.batch_decisions.length ? <div className={styles.grid}>{caseInfo.batch_decisions.map(row => <article key={row.batch_id} className={styles.batch}><h3>{row.batch_id}</h3><Chip tone={['NO_IMPACT', 'NOT_IN_SCOPE'].includes(row.decision) ? 'good' : ['SHIPPED_ESCALATE', 'UNCERTAIN_ESCALATE'].includes(row.decision) ? 'danger' : 'warning'}>{label(row.decision)}{['NO_IMPACT', 'NOT_IN_SCOPE'].includes(row.decision) ? ' · no action' : ''}</Chip><p>{row.rationale}</p><p>Rules: {row.rule_ids.join(', ') || 'None'}</p>{row.uncertainty_flags?.map(flag => <Chip tone="warning" key={flag}>{flagLabel(flag)}</Chip>)}</article>)}</div> : <p>No batch decisions yet.</p>)}
-        {tab === 'Actions' && (caseInfo.actions.length ? <div className={styles.scroll}><table><thead><tr><th>Type</th><th>Target</th><th>Status</th><th>Approval</th></tr></thead><tbody>{caseInfo.actions.map(action => <tr key={action.id}><td>{label(action.type)}</td><td>{Object.entries(action.target).map(([key, value]) => `${label(key)}: ${value}`).join(' · ')}</td><td><Chip tone={actionTone(action.status)}>{label(action.status)}</Chip></td><td>{action.requires_approval ? action.status === 'PENDING_APPROVAL' && user?.role !== 'shipping_supervisor' ? <Link to="/approvals">Pending approval · Open queue</Link> : 'Required' : 'Not required'}</td></tr>)}</tbody></table></div> : <p>No actions yet.</p>)}
+        {tab === 'Actions' && <>{caseInfo.actions.length ? <div className={styles.scroll}><table><thead><tr><th>Type</th><th>Target</th><th>Status</th><th>Approval</th></tr></thead><tbody>{caseInfo.actions.map(action => <tr key={action.id}><td>{label(action.type)}</td><td>{describeAction(action, caseInfo.trace)}</td><td><Chip tone={actionTone(action.status)}>{label(action.status)}</Chip></td><td>{action.requires_approval ? action.status === 'PENDING_APPROVAL' ? <>{user?.role === 'qa_manager' && token ? <ApprovalDecision action={action} description={describeAction(action, caseInfo.trace)} token={token} onDecision={decided} /> : user?.role === 'qa_specialist' ? 'A QA manager must approve.' : 'Approval required.'}{user?.role !== 'shipping_supervisor' && <Link to="/approvals">Open queue</Link>}</> : 'Required' : 'Not required'}</td></tr>)}</tbody></table></div> : <p>No actions yet.</p>}{heldBatches.length > 0 && token && user && <section><h3>Held batches</h3>{heldBatches.map(batchId => <HeldBatchControls key={batchId} token={token} role={user.role} caseId={id} batchId={batchId} onAction={releaseRequested} />)}</section>}</>}
         {tab === 'Timeline' && <>{timelineError && <p role="alert" className={styles.error}>{timelineError}</p>}<button onClick={() => void loadTimeline()}>Refresh timeline</button>{events ? <Timeline events={events} /> : !timelineError && <p role="status">Loading timeline…</p>}</>}
       </section></>}
   </main>;

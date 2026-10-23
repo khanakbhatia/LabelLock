@@ -3,6 +3,7 @@ import meExample from '../../../contracts/examples/me.json';
 import inboxExample from '../../../contracts/examples/inbox.json';
 import noticeExample from '../../../contracts/examples/notice.json';
 import forbiddenExample from '../../../contracts/examples/error_forbidden.json';
+import policyExample from '../../../contracts/examples/error_policy_violation.json';
 import caseByMessage from '../../../contracts/examples/case_by_message.json';
 import caseDetail from '../../../contracts/examples/case_detail.json';
 import caseList from '../../../contracts/examples/case_summary_list.json';
@@ -10,7 +11,7 @@ import timelineExample from '../../../contracts/examples/timeline.json';
 import reportExample from '../../../contracts/examples/case_report.json';
 import approvalExample from '../../../contracts/examples/approvals.json';
 import ingestExample from '../../../contracts/examples/ingest_email_response.json';
-import { ApiError, type Action, type ActionStatus, type AuditEvent, type CaseDetail, type CaseReport, type CaseSummary, type ErrorCode, type InboxItem, type IngestEmailResponse, type LabelLockApi, type Notice, type NoticeSummary, type Role, type UncertaintyFlag, type User } from './types';
+import { ApiError, type Action, type ActionStatus, type AuditEvent, type CaseDetail, type CaseReport, type CaseSummary, type Disposition, type ErrorCode, type InboxItem, type IngestEmailResponse, type LabelLockApi, type Notice, type NoticeSummary, type Role, type UncertaintyFlag, type User } from './types';
 
 const users: Record<string, User> = {
   'valley.ingredients': { id: 'u_valley', name: 'Valley Ingredients', role: 'supplier' },
@@ -27,6 +28,8 @@ let sequence = 100;
 let forcedInboxError = false;
 const caseByMessageId = new Map<string, CaseSummary>([["18c2f4a9b7e01d3a", caseByMessage as CaseSummary]]);
 let approvals: Action[] = approvalExample as Action[];
+let dispositions: Disposition[] = [];
+let generation = 0;
 let runState: Record<string, 'ANALYZING' | 'AWAITING_APPROVAL'> = {};
 let runConflict = false;
 let casesError = false;
@@ -105,7 +108,9 @@ export const mocks: LabelLockApi = {
     const ingested = [...caseByMessageId.values()].find(item => item.id === id);
     const created = added.find(item => item.case_id === id);
     if (id !== 'c_001' && !listed && !ingested && !created) return error(404, 'NOT_FOUND', 'Case not found');
-    return { ...caseDetail, id, status: runState[id] ?? listed?.case_status ?? ingested?.status ?? 'RECEIVED', uncertainty_flags: caseFlags, notice: listed ? { id: listed.notice_id, supplier: listed.supplier, subject: listed.subject, received_at: listed.received_at } : ingested ? { id: ingested.notice_id, supplier: ingested.supplier, subject: ingested.subject, received_at: ingested.opened_at } : created ? { id: created.id, supplier: created.supplier, subject: created.subject, received_at: created.received_at } : caseDetail.notice, extraction: id === 'c_001' && runState[id] !== 'ANALYZING' ? caseDetail.extraction : null, trace: id === 'c_001' && runState[id] !== 'ANALYZING' ? caseDetail.trace : null, batch_decisions: id === 'c_001' && runState[id] !== 'ANALYZING' ? caseDetail.batch_decisions : [], actions: id === 'c_001' && runState[id] !== 'ANALYZING' ? (caseDetail.actions.map((a, i) => i === 0 && actionStatus ? { ...a, status: actionStatus } : a)) : [] } as unknown as CaseDetail;
+    const baseActions = id === 'c_001' && runState[id] !== 'ANALYZING' ? caseDetail.actions.map((a, i) => i === 0 && actionStatus ? { ...a, status: actionStatus } : a) : [];
+    const currentActions = [...baseActions.filter(a => !approvals.some(p => p.id === a.id)), ...approvals.filter(a => a.case_id === id)];
+    return { ...caseDetail, id, status: runState[id] ?? listed?.case_status ?? ingested?.status ?? 'RECEIVED', uncertainty_flags: caseFlags, notice: listed ? { id: listed.notice_id, supplier: listed.supplier, subject: listed.subject, received_at: listed.received_at } : ingested ? { id: ingested.notice_id, supplier: ingested.supplier, subject: ingested.subject, received_at: ingested.opened_at } : created ? { id: created.id, supplier: created.supplier, subject: created.subject, received_at: created.received_at } : caseDetail.notice, extraction: id === 'c_001' && runState[id] !== 'ANALYZING' ? caseDetail.extraction : null, trace: id === 'c_001' && runState[id] !== 'ANALYZING' ? caseDetail.trace : null, batch_decisions: id === 'c_001' && runState[id] !== 'ANALYZING' ? caseDetail.batch_decisions : [], actions: currentActions } as unknown as CaseDetail;
   },
   async listCases(token) {
     await delay(); requireRole(token, ['qa_specialist', 'qa_manager', 'shipping_supervisor']);
@@ -121,12 +126,16 @@ export const mocks: LabelLockApi = {
     setTimeout(() => { if (runState[id] === 'ANALYZING') runState[id] = 'AWAITING_APPROVAL'; }, 1500);
     return { case_id: id, run_id: `run_${id}` };
   },
-  async listApprovals(token) { await delay(); requireRole(token, ['qa_specialist', 'qa_manager']); return approvals.filter(action => action.status === 'PENDING_APPROVAL'); },
+  async listApprovals(token, status) { await delay(); requireRole(token, ['qa_specialist', 'qa_manager']); return approvals.filter(action => !status || action.status === status).sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? '')); },
   async approveAction(token, id) {
     await delay(); requireRole(token, ['qa_manager']);
     const found = approvals.find(action => action.id === id);
     if (!found) return error(404, 'NOT_FOUND', 'Action not found');
+    if (found.status !== 'PENDING_APPROVAL') return error(409, 'CONFLICT', 'Action has already been decided');
     approvals = approvals.map(action => action.id === id ? { ...action, status: 'APPROVED' } : action);
+    const currentGeneration = generation;
+    setTimeout(() => { if (generation === currentGeneration) approvals = approvals.map(action => action.id === id && action.status === 'APPROVED' ? { ...action, status: 'EXECUTED' } : action); }, 500);
+    setTimeout(() => { if (generation === currentGeneration) approvals = approvals.map(action => action.id === id && action.status === 'EXECUTED' ? { ...action, status: 'VERIFIED' } : action); }, 1000);
     return { ...found, status: 'APPROVED' };
   },
   async rejectAction(token, id, reason) {
@@ -134,14 +143,32 @@ export const mocks: LabelLockApi = {
     if (!reason.trim()) return error(422, 'VALIDATION_ERROR', 'Reason is required');
     const found = approvals.find(action => action.id === id);
     if (!found) return error(404, 'NOT_FOUND', 'Action not found');
+    if (found.status !== 'PENDING_APPROVAL') return error(409, 'CONFLICT', 'Action has already been decided');
     approvals = approvals.map(action => action.id === id ? { ...action, status: 'REJECTED' } : action);
     return { ...found, status: 'REJECTED' };
+  },
+  async recordDisposition(token, caseId, body) {
+    await delay(); const actor = requireRole(token, ['qa_manager']);
+    if (!body.batch_id.trim() || !body.evidence.trim()) return error(422, 'VALIDATION_ERROR', 'Batch and evidence are required');
+    const disposition: Disposition = { ...body, id: `d_${++sequence}`, case_id: caseId, recorded_by: actor.name, recorded_at: new Date().toISOString() };
+    dispositions = [...dispositions, disposition];
+    return disposition;
+  },
+  async requestRelease(token, caseId, body) {
+    await delay(); const actor = requireRole(token, ['qa_specialist', 'qa_manager', 'shipping_supervisor']);
+    if (!body.batch_id.trim() || !body.reason.trim()) return error(422, 'VALIDATION_ERROR', 'Batch and reason are required');
+    if (!dispositions.some(d => d.case_id === caseId && d.batch_id === body.batch_id)) {
+      throw new ApiError(409, { error: { ...policyExample.error, code: 'POLICY_VIOLATION', details: { batch_id: body.batch_id, case_id: caseId }, message: `Cannot release ${body.batch_id} without an approved disposition` } });
+    }
+    const action: Action = { id: `a_${++sequence}`, case_id: caseId, type: 'RELEASE_HOLD', target: { batch_id: body.batch_id }, status: 'PENDING_APPROVAL', requires_approval: true, requested_by: actor.name, created_at: new Date().toISOString(), result: null };
+    approvals = [action, ...approvals];
+    return action;
   },
 };
 
 /** Test hook; never imported by views. */
 export const mockControls = {
-  reset() { added = []; sequence = 100; forcedInboxError = false; casesError = false; runConflict = false; caseFlags = []; actionStatus = null; runState = {}; approvals = approvalExample as Action[]; caseByMessageId.clear(); caseByMessageId.set('18c2f4a9b7e01d3a', caseByMessage as CaseSummary); },
+  reset() { generation++; added = []; dispositions = []; sequence = 100; forcedInboxError = false; casesError = false; runConflict = false; caseFlags = []; actionStatus = null; runState = {}; approvals = approvalExample as Action[]; caseByMessageId.clear(); caseByMessageId.set('18c2f4a9b7e01d3a', caseByMessage as CaseSummary); },
   setInboxError(value: boolean) { forcedInboxError = value; },
   setCasesError(value: boolean) { casesError = value; },
   setRunConflict(value: boolean) { runConflict = value; },
