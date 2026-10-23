@@ -2,14 +2,14 @@ import base64
 import binascii
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from api.auth import ALL_ROLES, make_token, require_roles, verify_password
-from api.db import Case, Notice, User, get_db, now_iso, to_iso
+from api.db import Case, Notice, NoticeAttachment, User, get_db, now_iso, to_iso
 from api.errors import ApiError
 from api.notices import (
     MAX_ATTACHMENT_BYTES, Upload, case_summary, check_pdf, create_notice_case, reject_attachments, resolve_sender,
@@ -71,6 +71,69 @@ def submit_notice(
         supplier_id=user.supplier_id, subject=subject, body=body, received_at=now_iso(), uploads=[upload],
     )
     return {"notice_id": notice.id, "case_id": case.id, "case_status": case.status}
+
+
+def notice_case(db: Session, notice: Notice) -> Case:
+    return db.scalar(select(Case).where(Case.notice_id == notice.id))
+
+
+def first_attachment(db: Session, notice: Notice) -> NoticeAttachment | None:
+    return db.scalar(select(NoticeAttachment).where(NoticeAttachment.notice_id == notice.id).order_by(NoticeAttachment.id).limit(1))
+
+
+def visible_notice(db: Session, notice_id: str, user: User) -> Notice:
+    """QA sees every notice; a supplier only its own. Anything else is 404, not 403, so ids don't leak."""
+    notice = db.get(Notice, notice_id)
+    if notice is None or (user.role == "supplier" and notice.supplier_id != user.supplier_id):
+        raise ApiError(404, "NOT_FOUND", f"Notice {notice_id} not found", {"notice_id": notice_id})
+    return notice
+
+
+@router.get("/notices")
+def my_notices(mine: bool, user: User = Depends(require_roles("supplier")), db: Session = Depends(get_db)):
+    if not mine:
+        raise ApiError(422, "VALIDATION_ERROR", "Only mine=true is supported", {"fields": [{"field": "query.mine", "message": "must be true"}]})
+    notices = db.scalars(select(Notice).where(Notice.supplier_id == user.supplier_id).order_by(Notice.received_at.desc(), Notice.id))
+    out = []
+    for n in notices:
+        case = notice_case(db, n)
+        out.append({"id": n.id, "subject": n.subject, "received_at": n.received_at,
+                    "has_attachment": first_attachment(db, n) is not None, "case_id": case.id, "case_status": case.status})
+    return out
+
+
+@router.get("/inbox")
+def inbox(user: User = Depends(require_roles("qa_specialist", "qa_manager", "admin")), db: Session = Depends(get_db)):
+    rows = db.execute(select(Notice, Case).join(Case, Case.notice_id == Notice.id).order_by(Notice.received_at.desc(), Notice.id))
+    out = []
+    for n, case in rows:
+        summary = case_summary(db, case)
+        out.append({"notice_id": n.id, "case_id": case.id, "supplier": summary["supplier"], "subject": n.subject,
+                    "received_at": n.received_at, "has_attachment": first_attachment(db, n) is not None,
+                    "case_status": case.status})
+    return out
+
+
+@router.get("/notices/{notice_id}")
+def get_notice(notice_id: str, user: User = Depends(require_roles("qa_specialist", "qa_manager", "supplier")),
+               db: Session = Depends(get_db)):
+    n = visible_notice(db, notice_id, user)
+    att = first_attachment(db, n)
+    case = notice_case(db, n)
+    return {"id": n.id, "supplier_id": n.supplier_id, "supplier": case_summary(db, case)["supplier"], "subject": n.subject,
+            "body": n.body, "received_at": n.received_at, "content_hash": n.content_hash, "case_id": case.id,
+            "attachment": {"filename": att.filename, "mime_type": att.mime_type, "size_bytes": att.size_bytes} if att else None}
+
+
+@router.get("/notices/{notice_id}/attachment")
+def get_attachment(notice_id: str, user: User = Depends(require_roles("qa_specialist", "qa_manager", "supplier")),
+                   db: Session = Depends(get_db)):
+    att = first_attachment(db, visible_notice(db, notice_id, user))
+    if att is None:
+        raise ApiError(404, "NOT_FOUND", f"Notice {notice_id} has no attachment", {"notice_id": notice_id})
+    # Untrusted supplier file: served as a download, never rendered inline by the browser.
+    return FileResponse(att.path, media_type="application/pdf", filename=att.filename,
+                        headers={"X-Content-Type-Options": "nosniff"})
 
 
 class IngestAttachment(BaseModel):
@@ -155,9 +218,3 @@ def case_by_message(
     if case is None:
         raise ApiError(404, "NOT_FOUND", "No case for this Gmail message", {"gmail_message_id": gmail_message_id})
     return case_summary(db, case)
-
-
-@router.post("/actions/{action_id}/approve")
-def approve_action(action_id: str, user: User = Depends(require_roles("qa_manager"))):
-    # Placeholder until approvals land in M1/M2; the role check above is already real.
-    raise ApiError(501, "NOT_IMPLEMENTED", "Approving actions is not implemented yet", {"action_id": action_id})
