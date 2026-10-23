@@ -43,7 +43,9 @@ export const client: LabelLockApi = {
   requestRelease: (token, caseId, body) => request(`/cases/${encodeURIComponent(caseId)}/release-requests`, token, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
   recordDisposition: (token, caseId, body) => request(`/cases/${encodeURIComponent(caseId)}/dispositions`, token, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
   getRoi: token => request('/metrics/roi', token),
+  listScenarios: token => request('/scenarios', token),
   logBenchmark: (token, body) => request('/benchmarks', token, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
   resetDemo: token => request('/demo/reset', token, { method: 'POST' }),
   setFaults: (token, body) => request('/demo/faults', token, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  getFaults: token => request('/demo/faults', token),
 };

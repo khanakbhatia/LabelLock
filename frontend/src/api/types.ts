@@ -36,7 +36,7 @@ export interface Disposition extends DispositionRequest { id: string; case_id: s
 export interface NoticeRef { id: string; supplier: string; subject: string; received_at: string }
 export interface Evidence { source: 'email' | 'attachment'; page: number | null; quote: string }
 export interface ExtractedField { value: string | null; status: FieldStatus; confidence: number | null; evidence: Evidence | null }
-export interface AllergenAdded { allergen: string; rule_id: string }
+export interface AllergenAdded { allergen: string; rule_id: string; precautionary?: boolean }
 export interface Extraction { fields: Record<string, ExtractedField>; allergens_added: AllergenAdded[]; uncertainty_flags: UncertaintyFlag[]; model?: string; prompt_version?: string }
 export interface StockLocation { location: string; qty: number; status: string }
 export interface ShipmentLine { shipment_id: string; destination: string; departs_at: string; qty: number }
@@ -56,6 +56,7 @@ export interface BenchmarkCreate { scenario_id: string; mode: 'manual' | 'agent'
 export interface Benchmark extends BenchmarkCreate { id: string; created_at: string }
 export interface RoiSummary { measured: { manual_runs: number; agent_runs: number; manual_median_seconds: number | null; agent_median_seconds: number | null; eval: Record<string, number | null> }; assumptions: { key: string; label: string; value: number; unit: string }[] }
 export interface DemoFaults { wms_silent_hold_failure: boolean }
+export interface ScenarioSummary { id: string; subject: string }
 export interface Ok { ok: true }
 export interface LabelLockApi {
   login(username: string, password: string): Promise<LoginResponse>;
@@ -77,7 +78,9 @@ export interface LabelLockApi {
   requestRelease(token: string, caseId: string, body: ReleaseRequest): Promise<Action>;
   recordDisposition(token: string, caseId: string, body: DispositionRequest): Promise<Disposition>;
   getRoi(token: string): Promise<RoiSummary>;
+  listScenarios(token: string): Promise<ScenarioSummary[]>;
   logBenchmark(token: string, body: BenchmarkCreate): Promise<Benchmark>;
   resetDemo(token: string): Promise<Ok>;
   setFaults(token: string, body: DemoFaults): Promise<Ok>;
+  getFaults(token: string): Promise<DemoFaults>;
 }

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../auth';
@@ -27,6 +27,7 @@ describe('ROI dashboard', () => {
     start('/roi');
     expect(await screen.findByText('No manual runs logged yet - use the timer below', {}, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.queryByText(/x faster/)).not.toBeInTheDocument();
+    await userEvent.selectOptions(await screen.findByRole('combobox', { name: 'Scenario' }), 'S01');
     await userEvent.click(screen.getByRole('button', { name: 'Start' }));
     await userEvent.click(screen.getByRole('button', { name: 'Stop' }));
     await userEvent.type(screen.getByLabelText('Batches found'), '2');
@@ -46,6 +47,7 @@ describe('ROI dashboard', () => {
     start('/roi');
     await screen.findByText('16 / 20', {}, { timeout: 5000 });
     vi.spyOn(mocks, 'logBenchmark').mockRejectedValueOnce(new ApiError(422, { error: { code: 'VALIDATION_ERROR', message: 'Unknown scenario', request_id: 'req_invalid', details: { fields: [{ field: 'body.scenario_id', message: 'not a scenario in backend/scenarios' }] } } }));
+    await userEvent.selectOptions(await screen.findByRole('combobox', { name: 'Scenario' }), 'S01');
     await userEvent.click(screen.getByRole('button', { name: 'Start' }));
     await userEvent.click(screen.getByRole('button', { name: 'Stop' }));
     await userEvent.type(screen.getByLabelText('Batches found'), '2');
@@ -76,21 +78,43 @@ describe('ROI dashboard', () => {
     expect(volume).toHaveValue(30); expect(recall).toHaveValue(10000000);
     expect(within(assumptions).getByText(/QA hours saved per month/).textContent).toBe(original);
   }, 12000);
+  it('lists only scenario IDs and subjects and disables Start until selection', async () => {
+    start('/roi');
+    const startButton = await screen.findByRole('button', { name: 'Start' });
+    expect(startButton).toBeDisabled();
+    const choices = await screen.findByRole('combobox', { name: 'Scenario' }, { timeout: 5000 });
+    expect(within(choices).getByRole('option', { name: 'S01 - Lecithin source change from lot VL-2291' })).toBeInTheDocument();
+    expect(within(choices).getAllByRole('option')).toHaveLength(3);
+    expect(choices).not.toHaveTextContent('expected');
+    expect(startButton).toBeDisabled();
+    await userEvent.selectOptions(choices, 'S02');
+    expect(startButton).toBeEnabled();
+  });
+  it('retries a failed scenario-list load', async () => {
+    mockControls.setScenarioError(true); start('/roi');
+    expect(await screen.findByRole('alert', {}, { timeout: 5000 })).toHaveTextContent('Scenarios temporarily unavailable');
+    expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled();
+    mockControls.setScenarioError(false);
+    await userEvent.click(screen.getByRole('button', { name: 'Retry scenarios' }));
+    expect(await screen.findByRole('combobox', { name: 'Scenario' })).toBeInTheDocument();
+  });
 });
 
 describe('demo settings', () => {
   it('lets admin see controls and blocks QA users', async () => {
     start('/settings', 'admin');
     expect(await screen.findByRole('heading', { name: 'Demo controls' }, { timeout: 5000 })).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: 'WMS silently fails holds' })).toHaveAttribute('aria-checked', 'false');
+    await waitFor(() => expect(screen.getByRole('switch', { name: 'WMS silently fails holds' })).toBeEnabled());
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
     cleanup(); start('/settings', 'priya.qa');
     expect(await screen.findByText('Not permitted for your role', {}, { timeout: 5000 })).toBeInTheDocument();
   });
   it('requires confirmation, supports cancel and clears fault on reset', async () => {
     start('/settings', 'admin');
     await screen.findByRole('heading', { name: 'Demo controls' }, { timeout: 5000 });
+    await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled());
     await userEvent.click(screen.getByRole('switch', { name: 'WMS silently fails holds' }));
-    expect(await screen.findByText('WMS silent hold failure on.')).toBeInTheDocument();
+    expect(await screen.findByText('Server confirms WMS silent hold failure on.', {}, { timeout: 5000 })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Reset demo' }));
     const dialog = screen.getByRole('dialog', { name: 'Confirm demo reset' });
     expect(dialog).toHaveTextContent('All cases, notices, actions and audit events are deleted');
@@ -99,13 +123,27 @@ describe('demo settings', () => {
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
     await userEvent.click(screen.getByRole('button', { name: 'Reset demo' }));
     await userEvent.click(screen.getByRole('button', { name: 'Confirm reset' }));
-    expect(await screen.findByText('Demo reset. Fault switch is off.')).toBeInTheDocument();
+    expect(await screen.findByText('Demo reset. Server confirms the fault switch is off.', {}, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
-  }, 12000);
+  }, 16000);
   it('shows disabled message on 404', async () => {
     mockControls.setDemoDisabled(true); start('/settings', 'admin');
-    await screen.findByRole('heading', { name: 'Demo controls' }, { timeout: 5000 });
-    await userEvent.click(screen.getByRole('switch', { name: 'WMS silently fails holds' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Demo controls are disabled on this server (DEMO_MODE=false)');
+  });
+  it('reads server state on reload and reports a mismatched read-back', async () => {
+    start('/settings', 'admin');
+    await waitFor(() => expect(screen.getByRole('switch')).toBeEnabled(), { timeout: 5000 });
+    await userEvent.click(screen.getByRole('switch'));
+    expect(await screen.findByText('Server confirms WMS silent hold failure on.', {}, { timeout: 5000 })).toBeInTheDocument();
+    cleanup(); start('/settings', 'admin');
+    await waitFor(() => expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true'), { timeout: 5000 });
+    expect(screen.getByText(/Checked at/)).toBeInTheDocument();
+    mockControls.setFaultReadMismatch(true);
+    await userEvent.click(screen.getByRole('switch'));
+    expect(await screen.findByRole('alert', {}, { timeout: 5000 })).toHaveTextContent('Fault update did not match the server read-back');
+  }, 12000);
+  it('enforces role checks on the new read endpoints', async () => {
+    await expect(mocks.listScenarios('mock:marco.ship')).rejects.toMatchObject({ status: 403, code: 'FORBIDDEN' });
+    await expect(mocks.getFaults('mock:priya.qa')).rejects.toMatchObject({ status: 403, code: 'FORBIDDEN' });
   });
 });

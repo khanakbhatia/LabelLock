@@ -13,7 +13,9 @@ import approvalExample from '../../../contracts/examples/approvals.json';
 import ingestExample from '../../../contracts/examples/ingest_email_response.json';
 import roiExample from '../../../contracts/examples/roi_summary.json';
 import benchmarkExample from '../../../contracts/examples/benchmark.json';
-import { ApiError, type Action, type ActionStatus, type AuditEvent, type Benchmark, type CaseDetail, type CaseReport, type CaseSummary, type Disposition, type ErrorCode, type InboxItem, type IngestEmailResponse, type LabelLockApi, type Notice, type NoticeSummary, type RoiSummary, type Role, type UncertaintyFlag, type User } from './types';
+import scenarioExample from '../../../contracts/examples/scenario_list.json';
+import faultExample from '../../../contracts/examples/demo_faults.json';
+import { ApiError, type Action, type ActionStatus, type AuditEvent, type Benchmark, type CaseDetail, type CaseReport, type CaseSummary, type Disposition, type ErrorCode, type InboxItem, type IngestEmailResponse, type LabelLockApi, type Notice, type NoticeSummary, type RoiSummary, type Role, type ScenarioSummary, type UncertaintyFlag, type User } from './types';
 
 const users: Record<string, User> = {
   'valley.ingredients': { id: 'u_valley', name: 'Valley Ingredients', role: 'supplier' },
@@ -39,9 +41,12 @@ let caseFlags: UncertaintyFlag[] = [];
 let actionStatus: ActionStatus | null = null;
 let manualRuns: Benchmark[] = [];
 let initialManualRuns: number | null = null;
-let faults = false;
+let faults = faultExample.wms_silent_hold_failure;
 let demoDisabled = false;
 let roiError = false;
+let scenarioError = false;
+let faultReadMismatch = false;
+let precautionaryExample = false;
 const roiSeed = roiExample as RoiSummary;
 function median(values: number[]) { const sorted = [...values].sort((a, b) => a - b); const middle = Math.floor(sorted.length / 2); return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2; }
 
@@ -119,7 +124,7 @@ export const mocks: LabelLockApi = {
     if (id !== 'c_001' && !listed && !ingested && !created) return error(404, 'NOT_FOUND', 'Case not found');
     const baseActions = id === 'c_001' && runState[id] !== 'ANALYZING' ? caseDetail.actions.map((a, i) => i === 0 && actionStatus ? { ...a, status: actionStatus } : a) : [];
     const currentActions = [...baseActions.filter(a => !approvals.some(p => p.id === a.id)), ...approvals.filter(a => a.case_id === id)];
-    return { ...caseDetail, id, status: runState[id] ?? listed?.case_status ?? ingested?.status ?? 'RECEIVED', uncertainty_flags: caseFlags, notice: listed ? { id: listed.notice_id, supplier: listed.supplier, subject: listed.subject, received_at: listed.received_at } : ingested ? { id: ingested.notice_id, supplier: ingested.supplier, subject: ingested.subject, received_at: ingested.opened_at } : created ? { id: created.id, supplier: created.supplier, subject: created.subject, received_at: created.received_at } : caseDetail.notice, extraction: id === 'c_001' && runState[id] !== 'ANALYZING' ? caseDetail.extraction : null, trace: id === 'c_001' && runState[id] !== 'ANALYZING' ? caseDetail.trace : null, batch_decisions: id === 'c_001' && runState[id] !== 'ANALYZING' ? caseDetail.batch_decisions : [], actions: currentActions } as unknown as CaseDetail;
+    return { ...caseDetail, id, status: runState[id] ?? listed?.case_status ?? ingested?.status ?? 'RECEIVED', uncertainty_flags: caseFlags, notice: listed ? { id: listed.notice_id, supplier: listed.supplier, subject: listed.subject, received_at: listed.received_at } : ingested ? { id: ingested.notice_id, supplier: ingested.supplier, subject: ingested.subject, received_at: ingested.opened_at } : created ? { id: created.id, supplier: created.supplier, subject: created.subject, received_at: created.received_at } : caseDetail.notice, extraction: id === 'c_001' && runState[id] !== 'ANALYZING' ? precautionaryExample ? { ...caseDetail.extraction, allergens_added: [...caseDetail.extraction.allergens_added, { allergen: 'sesame', rule_id: 'ALLERGEN-PRECAUTION', precautionary: true }] } : caseDetail.extraction : null, trace: id === 'c_001' && runState[id] !== 'ANALYZING' ? caseDetail.trace : null, batch_decisions: id === 'c_001' && runState[id] !== 'ANALYZING' ? precautionaryExample ? caseDetail.batch_decisions.map((row, index) => index === 0 ? { ...row, rule_ids: [...row.rule_ids, 'LBL-MISSING-PRECAUTION'] } : row) : caseDetail.batch_decisions : [], actions: currentActions } as unknown as CaseDetail;
   },
   async listCases(token) {
     await delay(); requireRole(token, ['qa_specialist', 'qa_manager', 'shipping_supervisor']);
@@ -181,6 +186,7 @@ export const mocks: LabelLockApi = {
     const values = [...(baseMedian === null ? [] : Array(baseRuns).fill(baseMedian)), ...manualRuns.map(run => run.seconds)];
     return { ...roiSeed, measured: { ...roiSeed.measured, manual_runs: baseRuns + manualRuns.length, manual_median_seconds: values.length ? median(values) : null }, assumptions: roiSeed.assumptions.map(a => ({ ...a })) };
   },
+  async listScenarios(token) { await delay(); requireRole(token, ['qa_specialist', 'qa_manager', 'admin']); if (scenarioError) return error(502, 'UPSTREAM_FAILED', 'Scenarios temporarily unavailable'); return scenarioExample as ScenarioSummary[]; },
   async logBenchmark(token, body) {
     await delay(); requireRole(token, ['qa_specialist', 'qa_manager', 'admin']);
     if (!/^S(0[1-9]|1[0-9]|20)$/.test(body.scenario_id)) throw new ApiError(422, { error: { code: 'VALIDATION_ERROR', message: 'Unknown scenario id', request_id: 'req_mock', details: { fields: [{ field: 'body.scenario_id', message: 'not a scenario in backend/scenarios' }] } } });
@@ -196,14 +202,18 @@ export const mocks: LabelLockApi = {
     return { ok: true };
   },
   async setFaults(token, body) { await delay(); requireRole(token, ['admin']); if (demoDisabled) return error(404, 'NOT_FOUND', 'Demo mode is disabled'); faults = body.wms_silent_hold_failure; return { ok: true }; },
+  async getFaults(token) { await delay(); requireRole(token, ['admin']); if (demoDisabled) return error(404, 'NOT_FOUND', 'Demo mode is disabled'); return { wms_silent_hold_failure: faultReadMismatch ? !faults : faults }; },
 };
 
 /** Test hook; never imported by views. */
 export const mockControls = {
-  reset() { generation++; added = []; dispositions = []; sequence = 100; forcedInboxError = false; casesError = false; runConflict = false; caseFlags = []; actionStatus = null; runState = {}; approvals = approvalExample as Action[]; manualRuns = []; initialManualRuns = null; faults = false; demoDisabled = false; roiError = false; caseByMessageId.clear(); caseByMessageId.set('18c2f4a9b7e01d3a', caseByMessage as CaseSummary); },
+  reset() { generation++; added = []; dispositions = []; sequence = 100; forcedInboxError = false; casesError = false; runConflict = false; caseFlags = []; actionStatus = null; runState = {}; approvals = approvalExample as Action[]; manualRuns = []; initialManualRuns = null; faults = faultExample.wms_silent_hold_failure; demoDisabled = false; roiError = false; scenarioError = false; faultReadMismatch = false; precautionaryExample = false; caseByMessageId.clear(); caseByMessageId.set('18c2f4a9b7e01d3a', caseByMessage as CaseSummary); },
   setInitialManualRuns(value: number) { initialManualRuns = value; },
   setDemoDisabled(value: boolean) { demoDisabled = value; },
   setRoiError(value: boolean) { roiError = value; },
+  setScenarioError(value: boolean) { scenarioError = value; },
+  setFaultReadMismatch(value: boolean) { faultReadMismatch = value; },
+  setPrecautionaryExample(value: boolean) { precautionaryExample = value; },
   setInboxError(value: boolean) { forcedInboxError = value; },
   setCasesError(value: boolean) { casesError = value; },
   setRunConflict(value: boolean) { runConflict = value; },

@@ -58,6 +58,13 @@ describe('case workspace', () => {
     await userEvent.click(screen.getByRole('button', { name: 'View report' }));
     expect(await screen.findByRole('region', { name: 'Case report' })).toHaveTextContent('431');
   });
+  it('labels precautionary allergens as cross-contact and shows their decision rule', async () => {
+    mockControls.setPrecautionaryExample(true);
+    start('/cases/c_001');
+    expect(await screen.findByText(/sesame · may contain \(cross-contact\)/, {}, { timeout: 4000 })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: 'Label Check' }));
+    expect(screen.getByText(/LBL-MISSING-PRECAUTION/)).toBeInTheDocument();
+  });
   it('denies a supplier and hides run and report for shipping supervisor', async () => {
     const view = start('/cases/c_001', 'valley.ingredients');
     expect(await screen.findByRole('heading', { name: 'Not permitted for your role' })).toBeInTheDocument();

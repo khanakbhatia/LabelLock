@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, type RoiSummary } from '../api';
+import { api, ApiError, type RoiSummary, type ScenarioSummary } from '../api';
 import { useAuth } from '../auth';
 import styles from './Roi.module.css';
 
-const scenarios = Array.from({ length: 20 }, (_, i) => `S${String(i + 1).padStart(2, '0')}`);
 const message = (cause: unknown) => {
   if (!(cause instanceof ApiError)) return 'The request failed. Please retry.';
   const fields = cause.status === 422 && Array.isArray(cause.details?.fields) ? cause.details.fields as { field?: string; message?: string }[] : [];
@@ -21,7 +20,10 @@ export function Roi() {
   const [error, setError] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [success, setSuccess] = useState('');
-  const [scenario, setScenario] = useState('S01');
+  const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
+  const [scenario, setScenario] = useState('');
+  const [scenariosLoading, setScenariosLoading] = useState(true);
+  const [scenariosError, setScenariosError] = useState('');
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [batches, setBatches] = useState('');
@@ -40,6 +42,14 @@ export function Roi() {
     finally { setLoading(false); }
   }, [token]);
   useEffect(() => { void load(); }, [load]);
+  const loadScenarios = useCallback(async () => {
+    if (!token) return;
+    setScenariosLoading(true); setScenariosError(''); setScenario('');
+    try { setScenarios(await api.listScenarios(token)); }
+    catch (cause) { setScenarios([]); setScenariosError(message(cause)); }
+    finally { setScenariosLoading(false); }
+  }, [token]);
+  useEffect(() => { void loadScenarios(); }, [loadScenarios]);
   useEffect(() => {
     if (startedAt === null) return;
     const tick = () => setElapsed(Date.now() - startedAt);
@@ -53,7 +63,7 @@ export function Roi() {
   const both = manual != null && agent != null;
   const hours = both ? (manual - agent) / 3600 * (assumptions.change_notices_per_month ?? 0) : null;
   const submit = async () => {
-    if (!token || !stopped) return;
+    if (!token || !stopped || !scenario) return;
     setSubmitError(''); setSuccess('');
     if (batches.trim() === '' || falseHolds.trim() === '' || !Number.isInteger(Number(batches)) || Number(batches) < 0 || !Number.isInteger(Number(falseHolds)) || Number(falseHolds) < 0 || !operator.trim()) {
       setSubmitError('Enter non-negative whole numbers for batches found and false holds, and an operator name.'); return;
@@ -86,7 +96,7 @@ export function Roi() {
         <div className={styles.estimate}><h3>Estimate from assumptions</h3>{hours === null ? <p>Log a manual run to calculate a time and cost estimate.</p> : <><strong>{hours.toFixed(1)} QA hours saved per month</strong><p>Estimated QA time cost: {currency(hours * (assumptions.qa_hourly_cost ?? 0))} per month.</p><small>Method: (manual median − agent median) ÷ 3600 × change notices per month; multiply hours by loaded QA hourly cost. A negative result means the agent took longer.</small></>}</div>
       </section>
     </>}
-    <section className={styles.section} aria-label="Manual benchmark timer"><h2>Manual benchmark timer</h2><p className={styles.muted}>Time a manual scenario run, then record your results.</p><div className={styles.fields}><label className={styles.field}>Scenario<select value={scenario} onChange={event => { setScenario(event.target.value); resetTimer(); }}>{scenarios.map(id => <option key={id}>{id}</option>)}</select></label></div><div className={styles.timer} role="timer" aria-label="Elapsed time">{elapsedLabel(elapsed)}</div><div className={styles.buttons}><button className={styles.primary} disabled={startedAt !== null} onClick={() => { setStartedAt(Date.now() - elapsed); setStopped(false); setSuccess(''); }}>Start</button><button disabled={startedAt === null} onClick={() => { setElapsed(Date.now() - startedAt!); setStartedAt(null); setStopped(true); }}>Stop</button><button onClick={resetTimer}>Reset</button></div>
+    <section className={styles.section} aria-label="Manual benchmark timer"><h2>Manual benchmark timer</h2><p className={styles.muted}>Time a manual scenario run, then record your results.</p>{scenariosLoading ? <p role="status">Loading scenarios…</p> : scenariosError ? <p role="alert" className={styles.error}>{scenariosError} <button onClick={() => void loadScenarios()}>Retry scenarios</button></p> : scenarios.length === 0 ? <p>No scenarios available for a manual run.</p> : <div className={styles.fields}><label className={styles.field}>Scenario<select value={scenario} onChange={event => { setScenario(event.target.value); resetTimer(); }}><option value="">Choose a scenario</option>{scenarios.map(item => <option key={item.id} value={item.id}>{item.id} - {item.subject}</option>)}</select></label></div>}<div className={styles.timer} role="timer" aria-label="Elapsed time">{elapsedLabel(elapsed)}</div><div className={styles.buttons}><button className={styles.primary} disabled={!scenario || scenariosLoading || !!scenariosError || startedAt !== null} onClick={() => { setStartedAt(Date.now() - elapsed); setStopped(false); setSuccess(''); }}>Start</button><button disabled={startedAt === null} onClick={() => { setElapsed(Date.now() - startedAt!); setStartedAt(null); setStopped(true); }}>Stop</button><button onClick={resetTimer}>Reset</button></div>
       {stopped && <div className={styles.fields}><label className={styles.field}>Batches found<input type="number" min="0" step="1" required value={batches} onChange={e => setBatches(e.target.value)} /></label><label className={styles.field}>False holds<input type="number" min="0" step="1" required value={falseHolds} onChange={e => setFalseHolds(e.target.value)} /></label><label className={styles.field}>Operator<input required value={operator} onChange={e => setOperator(e.target.value)} /></label></div>}
       {stopped && <p>Mode: manual · Duration: {(elapsed / 1000).toFixed(1)} seconds</p>}{stopped && <button className={styles.primary} disabled={submitting} onClick={() => void submit()}>{submitting ? 'Submitting…' : 'Log manual run'}</button>}{submitError && <p className={styles.error} role="alert">{submitError}</p>}{success && <p className={styles.success} role="status">{success}</p>}
     </section>
