@@ -1,5 +1,11 @@
 [
   {"sku": "OCB-100", "version": "3", "ingredient_statement": "Rolled oats, honey, sunflower oil, soy lecithin.", "contains": ["soy"], "may_contain": [], "claims": []},
   {"sku": "HGB-200", "version": "5", "ingredient_statement": "Rolled oats, honey, skim milk powder, lecithin.", "contains": ["milk"], "may_contain": [], "claims": []},
-  {"sku": "ASB-100", "version": "2", "ingredient_statement": "Sunflower seeds, rolled oats, sunflower lecithin.", "contains": [], "may_contain": [], "claims": ["free from top 9 allergens"]}
+  {"sku": "ASB-100", "version": "2", "ingredient_statement": "Sunflower seeds, rolled oats, sunflower lecithin.", "contains": [], "may_contain": [], "claims": ["free from top 9 allergens"]},
+  {"sku": "SCB-300", "version": "1", "ingredient_statement": "Wheat flour, seed blend, salt.", "contains": ["wheat"], "may_contain": ["sesame"], "claims": []},
+  {"sku": "PCB-400", "version": "1", "ingredient_statement": "Soy protein crisp, dates, cocoa.", "contains": ["soy"], "may_contain": [], "claims": []},
+  {"sku": "DCB-410", "version": "1", "ingredient_statement": "Milk chocolate, protein crisp.", "contains": ["milk"], "may_contain": [], "claims": []},
+  {"sku": "HSN-500", "version": "1", "ingredient_statement": "Wheat, herbs, savory glaze.", "contains": ["wheat"], "may_contain": [], "claims": ["sesame-free"]},
+  {"sku": "GFB-600", "version": "1", "ingredient_statement": "Rolled oats, dried fruit, fruit binder.", "contains": [], "may_contain": [], "claims": []},
+  {"sku": "CRK-700", "version": "1", "ingredient_statement": "Corn, sunflower oil, crumb coating.", "contains": [], "may_contain": [], "claims": []}
 ]

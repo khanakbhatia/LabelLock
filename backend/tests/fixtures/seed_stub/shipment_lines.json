@@ -1,4 +1,6 @@
 [
   {"shipment_id": "L-552", "batch_id": "FG-1043", "qty": 240},
-  {"shipment_id": "L-552", "batch_id": "FG-1040", "qty": 100}
+  {"shipment_id": "L-552", "batch_id": "FG-1040", "qty": 100},
+  {"shipment_id": "L-610", "batch_id": "FG-2201", "qty": 60},
+  {"shipment_id": "L-590", "batch_id": "FG-2302", "qty": 400}
 ]

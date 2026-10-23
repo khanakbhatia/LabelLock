@@ -4,5 +4,13 @@
   {"lot_id": "PO-7710", "material_id": "RM-201", "received_at": "2026-09-28T08:00:00Z"},
   {"lot_id": "VH-0412", "material_id": "RM-305", "received_at": "2026-09-20T08:00:00Z"},
   {"lot_id": "VS-1180", "material_id": "RM-410", "received_at": "2026-09-25T08:00:00Z"},
-  {"lot_id": "VM-0091", "material_id": "RM-502", "received_at": "2026-09-22T08:00:00Z"}
+  {"lot_id": "VM-0091", "material_id": "RM-502", "received_at": "2026-09-22T08:00:00Z"},
+  {"lot_id": "VL-2293", "material_id": "RM-114", "received_at": "2026-10-12T08:00:00Z"},
+  {"lot_id": "PO-7711", "material_id": "RM-201", "received_at": "2026-10-10T08:00:00Z"},
+  {"lot_id": "VH-0413", "material_id": "RM-305", "received_at": "2026-10-11T08:00:00Z"},
+  {"lot_id": "VS-3301", "material_id": "RM-620", "received_at": "2026-10-03T08:00:00Z"},
+  {"lot_id": "PC-4410", "material_id": "RM-640", "received_at": "2026-10-04T08:00:00Z"},
+  {"lot_id": "SG-5520", "material_id": "RM-660", "received_at": "2026-10-05T08:00:00Z"},
+  {"lot_id": "BD-7781", "material_id": "RM-680", "received_at": "2026-09-30T08:00:00Z"},
+  {"lot_id": "CC-8120", "material_id": "RM-700", "received_at": "2026-09-29T08:00:00Z"}
 ]

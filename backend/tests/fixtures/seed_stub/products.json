@@ -1,5 +1,11 @@
 [
   {"sku": "OCB-100", "name": "Oat Crunch Bar", "label_version": "3"},
   {"sku": "HGB-200", "name": "Honey Granola Bites", "label_version": "5"},
-  {"sku": "ASB-100", "name": "Allergy-Smart Seed Bar", "label_version": "2"}
+  {"sku": "ASB-100", "name": "Allergy-Smart Seed Bar", "label_version": "2"},
+  {"sku": "SCB-300", "name": "Seeded Crispbread", "label_version": "1"},
+  {"sku": "PCB-400", "name": "Protein Crunch Bar", "label_version": "1"},
+  {"sku": "DCB-410", "name": "Dairy Choc Bar", "label_version": "1"},
+  {"sku": "HSN-500", "name": "Herb Snack Nuggets", "label_version": "1"},
+  {"sku": "GFB-600", "name": "Granola Fruit Bar", "label_version": "1"},
+  {"sku": "CRK-700", "name": "Corn Crackers", "label_version": "1"}
 ]
