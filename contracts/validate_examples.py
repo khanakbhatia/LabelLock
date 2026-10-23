@@ -25,6 +25,10 @@ EXAMPLES = {
     "case_report.json": "CaseReport",
     "error_forbidden.json": "Error",
     "error_policy_violation.json": "Error",
+    "ingest_email_request.json": "IngestEmailRequest",
+    "ingest_email_response.json": "IngestEmailResponse",
+    "ingest_email_duplicate.json": "IngestEmailResponse",
+    "case_by_message.json": "CaseSummary",
 }
 
 # enums.json key -> openapi schema name
@@ -35,6 +39,7 @@ ENUMS = {
     "action_type": "ActionType",
     "action_status": "ActionStatus",
     "role": "Role",
+    "uncertainty_flag": "UncertaintyFlag",
 }
 
 

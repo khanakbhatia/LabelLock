@@ -1,4 +1,4 @@
 [
-  {"id": "c_002", "notice_id": "n_002", "status": "RECEIVED", "supplier": "Valley Ingredients", "subject": "Updated COA for oat flour, no formulation change", "opened_at": "2026-10-23T11:20:01Z", "contained_at": null, "duplicate_of": null, "pending_approvals": 0},
-  {"id": "c_001", "notice_id": "n_001", "status": "AWAITING_APPROVAL", "supplier": "Valley Ingredients", "subject": "Lecithin source change from lot VL-2291", "opened_at": "2026-10-23T09:00:01Z", "contained_at": null, "duplicate_of": null, "pending_approvals": 1}
+  {"id": "c_002", "notice_id": "n_002", "status": "RECEIVED", "supplier": "Valley Ingredients", "subject": "Updated COA for oat flour, no formulation change", "opened_at": "2026-10-23T11:20:01Z", "contained_at": null, "duplicate_of": null, "pending_approvals": 0, "uncertainty_flags": []},
+  {"id": "c_001", "notice_id": "n_001", "status": "AWAITING_APPROVAL", "supplier": "Valley Ingredients", "subject": "Lecithin source change from lot VL-2291", "opened_at": "2026-10-23T09:00:01Z", "contained_at": null, "duplicate_of": null, "pending_approvals": 1, "uncertainty_flags": []}
 ]
