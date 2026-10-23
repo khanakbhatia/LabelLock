@@ -27,6 +27,11 @@
    "untouched": [
     "FG-1039",
     "FG-1040"
+   ],
+   "must_hold": [
+    "FG-1041",
+    "FG-1042",
+    "FG-1043"
    ]
   }
  },
@@ -66,6 +71,11 @@
    "untouched": [
     "FG-1039",
     "FG-1040"
+   ],
+   "must_hold": [
+    "FG-1041",
+    "FG-1042",
+    "FG-1043"
    ]
   }
  },
@@ -89,28 +99,36 @@
   ],
   "expect": {
    "status": [
-    "AWAITING_APPROVAL"
+    "AWAITING_APPROVAL",
+    "ESCALATED"
    ],
    "decisions": {
     "FG-1040": [
      "NO_IMPACT"
     ],
     "FG-1041": [
-     "HOLD_RELABEL"
+     "HOLD_RELABEL",
+     "UNCERTAIN_ESCALATE"
     ],
     "FG-1042": [
-     "HOLD_RELABEL"
+     "HOLD_RELABEL",
+     "UNCERTAIN_ESCALATE"
     ],
     "FG-1043": [
-     "CLAIM_CONFLICT"
+     "CLAIM_CONFLICT",
+     "UNCERTAIN_ESCALATE"
     ]
    },
    "untouched": [
     "FG-1039",
     "FG-1040"
+   ],
+   "must_hold": [
+    "FG-1041",
+    "FG-1042",
+    "FG-1043"
    ]
-  },
-  "known_gap": "Claude flags LLM_UNCERTAIN when only the PDF states the change; UNCERTAIN_ESCALATE places no protective holds (M1 item 13)."
+  }
  },
  {
   "id": "S04",
@@ -518,6 +536,11 @@
    "untouched": [
     "FG-1039",
     "FG-1040"
+   ],
+   "must_hold": [
+    "FG-1041",
+    "FG-1042",
+    "FG-1043"
    ]
   }
  },
@@ -553,6 +576,11 @@
    "untouched": [
     "FG-1039",
     "FG-1040"
+   ],
+   "must_hold": [
+    "FG-1041",
+    "FG-1042",
+    "FG-1043"
    ]
   }
  },
@@ -594,7 +622,12 @@
     "FG-1039",
     "FG-1040"
    ],
-   "duplicate": true
+   "duplicate": true,
+   "must_hold": [
+    "FG-1041",
+    "FG-1042",
+    "FG-1043"
+   ]
   }
  },
  {

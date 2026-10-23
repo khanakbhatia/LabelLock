@@ -121,3 +121,16 @@ No contract shape changes; every new response validates against `openapi.yaml`. 
   `GET /metrics/roi`: `measured` = benchmark rows + the last eval file (agent timings only where Claude was live);
   `assumptions` from `backend/config/roi_assumptions.json` (editable inputs, never results).
 - Contract examples added: `benchmark.json`, `roi_summary.json` (no schema changes).
+
+## 2026-10-23 — Policy: uncertain batches are held, then escalated (Anvi; supersedes M1 item 13 for UNCERTAIN_ESCALATE)
+
+- `UNCERTAIN_ESCALATE` batches now get protective `PLACE_HOLD` at every location with stock (holds are reversible),
+  and the case still ends `ESCALATED` for a human. `REMOVE_FROM_SHIPMENT` is still only requested for confirmed
+  decisions (`HOLD`, `HOLD_RELABEL`, `CLAIM_CONFLICT`); `SHIPPED_ESCALATE` still creates no writes.
+- Why: the eval showed that a notice which only makes the model unsure (S03), or a prompt injection (S16, S17),
+  left affected stock AVAILABLE while waiting for a human.
+- Eval: scenarios gain `must_hold` (batches that must end with a VERIFIED hold); S03 is no longer a known gap.
+  Mock rerun: 17/20 pass, 0 false holds, decision accuracy 0.911, escalation accuracy 0.75 (the 3 wrong escalations
+  are the 3 remaining known gaps: S04, S11, S19). Escalation is scored correct when `ESCALATED` is an allowed outcome.
+- `latest.json` from a replay run keeps each scenario's last live-measured `live_agent_seconds` (replays have no real
+  Claude latency); `/metrics/roi` reads only those.

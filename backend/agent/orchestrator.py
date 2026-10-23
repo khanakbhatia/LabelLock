@@ -30,6 +30,8 @@ STEPS = ("extract", "trace", "decide", "act", "execute", "verify", "report")
 # execute runs whatever a QA manager approved since the last run; verify/report are read-only plus idempotent retries
 ALWAYS_RERUN = {"execute", "verify", "report"}
 KNOWN_LLM_FLAGS = {"LLM_UNCERTAIN"}
+# Holds are reversible, so stock is held while a human resolves uncertainty; the case still escalates.
+PROTECTIVE_HOLD = HOLDABLE | {"UNCERTAIN_ESCALATE"}
 
 
 def parse_iso(ts: str) -> datetime:
@@ -190,7 +192,7 @@ class CaseRun:
         batches = {b["batch_id"]: b for b in tr.graph["batches"]}
         decisions = self.db.scalars(select(BatchDecision).where(BatchDecision.case_id == self.case.id).order_by(BatchDecision.batch_id))
         for d in decisions:
-            if d.decision not in HOLDABLE:
+            if d.decision not in PROTECTIVE_HOLD:
                 continue
             batch = batches[d.batch_id]
             for loc in batch["locations"]:
@@ -201,7 +203,8 @@ class CaseRun:
                 if action.status == "PROPOSED":
                     self.place_hold(action, reason=f"{d.decision}: {', '.join(d.rule_ids)}")
             for s in batch["shipments"]:
-                if tr.graph["shipment_status"][s["shipment_id"]] in SHIPPED_STATUSES:
+                # shipment removal is restricted; only request it for a confirmed problem, not an uncertain one
+                if d.decision not in HOLDABLE or tr.graph["shipment_status"][s["shipment_id"]] in SHIPPED_STATUSES:
                     continue
                 action, created = self.get_or_create_action("REMOVE_FROM_SHIPMENT", {"batch_id": d.batch_id, "shipment_id": s["shipment_id"]},
                                                             requires_approval=True, status="PENDING_APPROVAL")

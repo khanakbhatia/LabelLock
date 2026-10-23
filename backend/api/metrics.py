@@ -58,7 +58,7 @@ def roi(request: Request, user: User = Depends(require_roles(*ROLES)), db: Sessi
         last = json.loads(settings.eval_results_path.read_text(encoding="utf-8"))
         eval_metrics = {k: v for k, v in last["metrics"].items() if isinstance(v, (int, float)) or v is None}
         # only scenarios where Claude was really called; replayed extractions are not real agent latency
-        agent += [r["agent_seconds"] for r in last["results"] if r["agent_seconds"] is not None and r.get("llm") == "live"]
+        agent += [r["live_agent_seconds"] for r in last["results"] if r.get("live_agent_seconds") is not None]
     assumptions = json.loads(settings.roi_assumptions_path.read_text(encoding="utf-8"))["assumptions"]
     return {
         "measured": {"manual_runs": len(manual), "agent_runs": len(agent),
