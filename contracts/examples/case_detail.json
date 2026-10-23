@@ -1,0 +1,35 @@
+{
+  "id": "c_001",
+  "status": "AWAITING_APPROVAL",
+  "notice": {"id": "n_001", "supplier": "Valley Ingredients", "subject": "Lecithin source change from lot VL-2291", "received_at": "2026-10-23T09:00:00Z"},
+  "extraction": {
+    "fields": {
+      "material": {"value": "Lecithin (RM-114)", "status": "FOUND", "confidence": 0.97,
+        "evidence": {"source": "attachment", "page": 1, "quote": "Product: Lecithin, code RM-114"}},
+      "new_ingredient": {"value": "soy lecithin", "status": "FOUND", "confidence": 0.95,
+        "evidence": {"source": "email", "page": null, "quote": "will be supplied as soy lecithin"}},
+      "effective_lot": {"value": "VL-2291", "status": "FOUND", "confidence": 0.99,
+        "evidence": {"source": "email", "page": null, "quote": "from lot VL-2291 onward"}},
+      "may_contain": {"value": null, "status": "MISSING", "confidence": null, "evidence": null}
+    },
+    "allergens_added": [{"allergen": "soy", "rule_id": "ALG-SOY-LECITHIN"}],
+    "uncertainty_flags": []
+  },
+  "trace": {
+    "material_lots": ["VL-2291"],
+    "batches": [
+      {"batch_id": "FG-1041", "sku": "HGB-200", "product": "Honey Granola Bites", "locations": [{"location": "DC-EAST", "qty": 480, "status": "HELD"}], "shipments": []},
+      {"batch_id": "FG-1043", "sku": "ASB-100", "product": "Allergy-Smart Seed Bar", "locations": [{"location": "DC-EAST", "qty": 120, "status": "HELD"}], "shipments": [{"shipment_id": "L-552", "destination": "Retailer DC 7", "departs_at": "2026-10-23T14:00:00Z", "qty": 240}]}
+    ],
+    "gaps": []
+  },
+  "batch_decisions": [
+    {"batch_id": "FG-1041", "decision": "HOLD_RELABEL", "rule_ids": ["LBL-MISSING-ALLERGEN"], "rationale": "Label declares milk only; soy now present."},
+    {"batch_id": "FG-1043", "decision": "CLAIM_CONFLICT", "rule_ids": ["CLM-FREE-FROM-TOP9"], "rationale": "Free-from-top-9 claim broken by soy."}
+  ],
+  "actions": [
+    {"id": "a_010", "type": "PLACE_HOLD", "target": {"batch_id": "FG-1041", "location": "DC-EAST"}, "status": "VERIFIED", "requires_approval": false},
+    {"id": "a_012", "type": "REMOVE_FROM_SHIPMENT", "target": {"batch_id": "FG-1043", "shipment_id": "L-552"}, "status": "PENDING_APPROVAL", "requires_approval": true}
+  ],
+  "metrics": {"agent_started_at": "2026-10-23T09:00:04Z", "elapsed_seconds": 41}
+}

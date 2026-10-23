@@ -1,0 +1,1 @@
+{"error": {"code": "POLICY_VIOLATION", "message": "Cannot release FG-1041 without an approved disposition", "details": {"batch_id": "FG-1041", "case_id": "c_001"}, "request_id": "req_91ab"}}

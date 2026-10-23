@@ -1,0 +1,1 @@
+{"error": {"code": "FORBIDDEN", "message": "Role qa_specialist cannot approve REMOVE_FROM_SHIPMENT", "details": {"action_id": "a_012"}, "request_id": "req_8f2c"}}

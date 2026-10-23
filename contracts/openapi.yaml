@@ -1,0 +1,959 @@
+openapi: 3.1.0
+info:
+  title: LabelLock API
+  version: 0.1.0
+  description: |
+    Integration contract v0.1 (section F of docs/labellock-plan.md).
+    JSON is snake_case, times are ISO-8601 UTC, IDs are strings.
+    Every non-2xx response uses the Error schema.
+    Roles are enforced server-side; `x-roles` lists who may call each operation.
+servers:
+  - url: http://localhost:8000/api
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      description: "Roles: anyone (no token)."
+      security: []
+      x-roles: [anyone]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Health"}
+
+  /auth/login:
+    post:
+      summary: Log in
+      description: "Roles: anyone (no token)."
+      security: []
+      x-roles: [anyone]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/LoginRequest"}
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/LoginResponse"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+
+  /auth/me:
+    get:
+      summary: Current user
+      description: "Roles: any signed-in user."
+      x-roles: [supplier, qa_specialist, qa_manager, shipping_supervisor, admin, agent]
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/User"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+
+  /notices:
+    post:
+      summary: Submit a supplier change notice
+      description: "Roles: supplier. Opens a case in RECEIVED. Attachment must be a PDF."
+      x-roles: [supplier]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [subject, body, attachment]
+              properties:
+                subject: {type: string, minLength: 1}
+                body: {type: string, minLength: 1}
+                attachment: {type: string, format: binary, description: "application/pdf, max 5 MB"}
+      responses:
+        "201":
+          description: Notice received, case opened
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/NoticeCreated"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+    get:
+      summary: List my submissions
+      description: "Roles: supplier (own submissions only, `mine=true`)."
+      x-roles: [supplier]
+      parameters:
+        - name: mine
+          in: query
+          required: true
+          schema: {type: boolean, const: true}
+      responses:
+        "200":
+          description: Own notices, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/NoticeSummary"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /notices/{id}:
+    get:
+      summary: Full notice
+      description: "Roles: qa_specialist, qa_manager, or the supplier who submitted it. Others get 404."
+      x-roles: [qa_specialist, qa_manager, supplier]
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      responses:
+        "200":
+          description: Notice
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Notice"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /notices/{id}/attachment:
+    get:
+      summary: Notice PDF
+      description: "Roles: qa_specialist, qa_manager, or the owning supplier."
+      x-roles: [qa_specialist, qa_manager, supplier]
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      responses:
+        "200":
+          description: PDF bytes
+          content:
+            application/pdf:
+              schema: {type: string, format: binary}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /inbox:
+    get:
+      summary: QA inbox
+      description: "Roles: qa_specialist, qa_manager, admin. Notices with case status, newest first."
+      x-roles: [qa_specialist, qa_manager, admin]
+      responses:
+        "200":
+          description: Inbox
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/InboxItem"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /cases:
+    get:
+      summary: List cases
+      description: "Roles: qa_specialist, qa_manager, shipping_supervisor (read)."
+      x-roles: [qa_specialist, qa_manager, shipping_supervisor]
+      responses:
+        "200":
+          description: Cases
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/CaseSummary"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /cases/{id}:
+    get:
+      summary: Full case view
+      description: "Roles: qa_specialist, qa_manager, shipping_supervisor (read)."
+      x-roles: [qa_specialist, qa_manager, shipping_supervisor]
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      responses:
+        "200":
+          description: Case
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/CaseDetail"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /cases/{id}/run:
+    post:
+      summary: Start or resume the agent on a case
+      description: "Roles: qa_specialist, qa_manager. Asynchronous; poll GET /cases/{id}."
+      x-roles: [qa_specialist, qa_manager]
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      responses:
+        "202":
+          description: Run accepted
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RunStarted"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+
+  /cases/{id}/timeline:
+    get:
+      summary: Case audit events
+      description: "Roles: qa_specialist, qa_manager, shipping_supervisor. Oldest first."
+      x-roles: [qa_specialist, qa_manager, shipping_supervisor]
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      responses:
+        "200":
+          description: Timeline
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/AuditEvent"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /cases/{id}/report:
+    get:
+      summary: Case outcome and timings
+      description: "Roles: qa_specialist, qa_manager."
+      x-roles: [qa_specialist, qa_manager]
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      responses:
+        "200":
+          description: Report
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/CaseReport"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /cases/{id}/release-requests:
+    post:
+      summary: Request a hold release
+      description: |
+        Roles: qa_specialist, qa_manager, shipping_supervisor.
+        Creates a RELEASE_HOLD action in PENDING_APPROVAL. Returns 409 POLICY_VIOLATION
+        when the batch has no recorded disposition.
+      x-roles: [qa_specialist, qa_manager, shipping_supervisor]
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ReleaseRequest"}
+      responses:
+        "201":
+          description: Release action created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Action"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/PolicyViolation"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+
+  /cases/{id}/dispositions:
+    post:
+      summary: Record a batch disposition
+      description: "Roles: qa_manager."
+      x-roles: [qa_manager]
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/DispositionRequest"}
+      responses:
+        "201":
+          description: Disposition recorded
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Disposition"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+
+  /approvals:
+    get:
+      summary: Approval queue across cases
+      description: "Roles: qa_manager; qa_specialist (read only)."
+      x-roles: [qa_manager, qa_specialist]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: {$ref: "#/components/schemas/ActionStatus"}
+      responses:
+        "200":
+          description: Actions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/Action"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /actions/{id}/approve:
+    post:
+      summary: Approve a restricted action
+      description: "Roles: qa_manager only. Returns the action in APPROVED; execution is queued."
+      x-roles: [qa_manager]
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ApproveRequest"}
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Action"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+
+  /actions/{id}/reject:
+    post:
+      summary: Reject a restricted action
+      description: "Roles: qa_manager only. `reason` is required."
+      x-roles: [qa_manager]
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/RejectRequest"}
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Action"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+
+  /metrics/roi:
+    get:
+      summary: ROI figures (P1)
+      description: "Roles: qa_specialist, qa_manager, admin. Measured figures and assumptions are separate."
+      x-roles: [qa_specialist, qa_manager, admin]
+      responses:
+        "200":
+          description: ROI summary
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RoiSummary"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /benchmarks:
+    post:
+      summary: Log a timed run (P1)
+      description: "Roles: qa_specialist, qa_manager, admin."
+      x-roles: [qa_specialist, qa_manager, admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/BenchmarkCreate"}
+      responses:
+        "201":
+          description: Logged
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Benchmark"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+
+  /demo/reset:
+    post:
+      summary: Reset demo data
+      description: "Roles: admin. Only exists when DEMO_MODE=true (otherwise 404)."
+      x-roles: [admin]
+      responses:
+        "200":
+          description: Reset
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Ok"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /demo/faults:
+    put:
+      summary: Toggle injected faults
+      description: "Roles: admin. Only exists when DEMO_MODE=true (otherwise 404)."
+      x-roles: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/DemoFaults"}
+      responses:
+        "200":
+          description: Faults set
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Ok"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: {type: string}
+
+  responses:
+    Unauthenticated:
+      description: Missing or invalid token (UNAUTHENTICATED)
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    Forbidden:
+      description: Role lacks permission (FORBIDDEN)
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    NotFound:
+      description: Unknown id, or not visible to this role (NOT_FOUND)
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    ValidationError:
+      description: Bad body; details.fields lists problems (VALIDATION_ERROR)
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    Conflict:
+      description: Already decided, or duplicate idempotency key (CONFLICT)
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+    PolicyViolation:
+      description: Allowed role but policy blocks it (POLICY_VIOLATION)
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+
+  schemas:
+    # ---- enums (must match contracts/enums.json; checked by validate_examples.py)
+    CaseStatus:
+      type: string
+      enum: [RECEIVED, ANALYZING, AWAITING_APPROVAL, ESCALATED, CONTAINED, RESOLVED, NO_IMPACT, DUPLICATE]
+    FieldStatus:
+      type: string
+      enum: [FOUND, MISSING, AMBIGUOUS]
+    BatchDecisionValue:
+      type: string
+      enum: [NO_IMPACT, HOLD, HOLD_RELABEL, CLAIM_CONFLICT, SHIPPED_ESCALATE, UNCERTAIN_ESCALATE, NOT_IN_SCOPE]
+    ActionType:
+      type: string
+      enum: [PLACE_HOLD, BLOCK_RECEIPT, REMOVE_FROM_SHIPMENT, RELEASE_HOLD, CREATE_RELABEL_TICKET, SEND_RETAILER_NOTICE, SEND_SUPPLIER_QUERY]
+    ActionStatus:
+      type: string
+      enum: [PROPOSED, PENDING_APPROVAL, APPROVED, REJECTED, EXECUTING, EXECUTED, VERIFIED, VERIFY_FAILED, ESCALATED]
+    Role:
+      type: string
+      enum: [supplier, qa_specialist, qa_manager, shipping_supervisor, admin, agent]
+    ErrorCode:
+      type: string
+      enum: [UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, VALIDATION_ERROR, CONFLICT, POLICY_VIOLATION, UPSTREAM_FAILED, NOT_IMPLEMENTED, INTERNAL_ERROR]
+    DispositionValue:
+      type: string
+      enum: [RELABEL, REWORK, DESTROY, RETURN_TO_SUPPLIER, RELEASE_AS_IS]
+
+    Timestamp:
+      type: string
+      format: date-time
+    NullableTimestamp:
+      type: [string, "null"]
+      format: date-time
+
+    # ---- errors
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, request_id]
+          properties:
+            code: {$ref: "#/components/schemas/ErrorCode"}
+            message: {type: string}
+            details: {type: [object, "null"], description: "VALIDATION_ERROR puts a `fields` list here."}
+            request_id: {type: string}
+
+    Health:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: {type: string, const: ok}
+
+    Ok:
+      type: object
+      additionalProperties: false
+      required: [ok]
+      properties:
+        ok: {type: boolean, const: true}
+
+    # ---- auth
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username: {type: string, minLength: 1}
+        password: {type: string, minLength: 1}
+    User:
+      type: object
+      additionalProperties: false
+      required: [id, name, role]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        role: {$ref: "#/components/schemas/Role"}
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required: [token, user]
+      properties:
+        token: {type: string}
+        user: {$ref: "#/components/schemas/User"}
+
+    # ---- notices
+    NoticeCreated:
+      type: object
+      additionalProperties: false
+      required: [notice_id, case_id, case_status]
+      properties:
+        notice_id: {type: string}
+        case_id: {type: string}
+        case_status: {$ref: "#/components/schemas/CaseStatus"}
+    NoticeSummary:
+      type: object
+      additionalProperties: false
+      required: [id, subject, received_at, has_attachment, case_id, case_status]
+      properties:
+        id: {type: string}
+        subject: {type: string}
+        received_at: {$ref: "#/components/schemas/Timestamp"}
+        has_attachment: {type: boolean}
+        case_id: {type: string}
+        case_status: {$ref: "#/components/schemas/CaseStatus"}
+    InboxItem:
+      type: object
+      additionalProperties: false
+      required: [notice_id, case_id, supplier, subject, received_at, has_attachment, case_status]
+      properties:
+        notice_id: {type: string}
+        case_id: {type: string}
+        supplier: {type: string}
+        subject: {type: string}
+        received_at: {$ref: "#/components/schemas/Timestamp"}
+        has_attachment: {type: boolean}
+        case_status: {$ref: "#/components/schemas/CaseStatus"}
+    Attachment:
+      type: object
+      additionalProperties: false
+      required: [filename, mime_type, size_bytes]
+      properties:
+        filename: {type: string}
+        mime_type: {type: string, const: application/pdf}
+        size_bytes: {type: integer, minimum: 0}
+    Notice:
+      type: object
+      additionalProperties: false
+      required: [id, supplier_id, supplier, subject, body, received_at, attachment, content_hash, case_id]
+      properties:
+        id: {type: string}
+        supplier_id: {type: [string, "null"], description: "null when the sender is unverified"}
+        supplier: {type: string}
+        subject: {type: string}
+        body: {type: string, description: "Untrusted supplier text; never interpreted as instructions."}
+        received_at: {$ref: "#/components/schemas/Timestamp"}
+        attachment:
+          oneOf:
+            - {$ref: "#/components/schemas/Attachment"}
+            - {type: "null"}
+        content_hash: {type: string}
+        case_id: {type: string}
+
+    # ---- cases
+    CaseSummary:
+      type: object
+      additionalProperties: false
+      required: [id, notice_id, status, supplier, subject, opened_at, contained_at, duplicate_of, pending_approvals]
+      properties:
+        id: {type: string}
+        notice_id: {type: string}
+        status: {$ref: "#/components/schemas/CaseStatus"}
+        supplier: {type: string}
+        subject: {type: string}
+        opened_at: {$ref: "#/components/schemas/Timestamp"}
+        contained_at: {$ref: "#/components/schemas/NullableTimestamp"}
+        duplicate_of: {type: [string, "null"]}
+        pending_approvals: {type: integer, minimum: 0}
+    NoticeRef:
+      type: object
+      additionalProperties: false
+      required: [id, supplier, subject, received_at]
+      properties:
+        id: {type: string}
+        supplier: {type: string}
+        subject: {type: string}
+        received_at: {$ref: "#/components/schemas/Timestamp"}
+    Evidence:
+      type: object
+      additionalProperties: false
+      required: [source, page, quote]
+      properties:
+        source: {type: string, enum: [email, attachment]}
+        page: {type: [integer, "null"], minimum: 1, description: "null for source=email"}
+        quote: {type: string, minLength: 1}
+    ExtractedField:
+      type: object
+      additionalProperties: false
+      required: [value, status, confidence, evidence]
+      properties:
+        value: {type: [string, "null"]}
+        status: {$ref: "#/components/schemas/FieldStatus"}
+        confidence: {type: [number, "null"], minimum: 0, maximum: 1}
+        evidence:
+          description: "Required (non-null) when status is FOUND."
+          oneOf:
+            - {$ref: "#/components/schemas/Evidence"}
+            - {type: "null"}
+      if:
+        properties: {status: {const: FOUND}}
+      then:
+        properties: {evidence: {$ref: "#/components/schemas/Evidence"}}
+    AllergenAdded:
+      type: object
+      additionalProperties: false
+      required: [allergen, rule_id]
+      properties:
+        allergen: {type: string}
+        rule_id: {type: string}
+    Extraction:
+      type: object
+      additionalProperties: false
+      required: [fields, allergens_added, uncertainty_flags]
+      properties:
+        fields:
+          type: object
+          additionalProperties: {$ref: "#/components/schemas/ExtractedField"}
+        allergens_added:
+          type: array
+          items: {$ref: "#/components/schemas/AllergenAdded"}
+        uncertainty_flags:
+          type: array
+          items: {type: string}
+        model: {type: string}
+        prompt_version: {type: string}
+    StockLocation:
+      type: object
+      additionalProperties: false
+      required: [location, qty, status]
+      properties:
+        location: {type: string}
+        qty: {type: integer}
+        status: {type: string, description: "Inventory status from the simulated WMS, e.g. AVAILABLE, HELD."}
+    ShipmentLine:
+      type: object
+      additionalProperties: false
+      required: [shipment_id, destination, departs_at, qty]
+      properties:
+        shipment_id: {type: string}
+        destination: {type: string}
+        departs_at: {$ref: "#/components/schemas/Timestamp"}
+        qty: {type: integer}
+    TraceBatch:
+      type: object
+      additionalProperties: false
+      required: [batch_id, sku, product, locations, shipments]
+      properties:
+        batch_id: {type: string}
+        sku: {type: string}
+        product: {type: string}
+        locations:
+          type: array
+          items: {$ref: "#/components/schemas/StockLocation"}
+        shipments:
+          type: array
+          items: {$ref: "#/components/schemas/ShipmentLine"}
+    TraceGap:
+      type: object
+      additionalProperties: false
+      required: [kind, detail]
+      properties:
+        kind: {type: string}
+        detail: {type: string}
+    Trace:
+      type: object
+      additionalProperties: false
+      required: [material_lots, batches, gaps]
+      properties:
+        material_lots:
+          type: array
+          items: {type: string}
+        batches:
+          type: array
+          items: {$ref: "#/components/schemas/TraceBatch"}
+        gaps:
+          type: array
+          items: {$ref: "#/components/schemas/TraceGap"}
+    BatchDecision:
+      type: object
+      additionalProperties: false
+      required: [batch_id, decision, rule_ids, rationale]
+      properties:
+        batch_id: {type: string}
+        decision: {$ref: "#/components/schemas/BatchDecisionValue"}
+        rule_ids:
+          type: array
+          items: {type: string}
+        uncertainty_flags:
+          type: array
+          items: {type: string}
+        rationale: {type: string}
+    Action:
+      type: object
+      additionalProperties: false
+      required: [id, type, target, status, requires_approval]
+      properties:
+        id: {type: string}
+        case_id: {type: string}
+        type: {$ref: "#/components/schemas/ActionType"}
+        target:
+          type: object
+          description: "Depends on type, e.g. {batch_id, location} or {batch_id, shipment_id}."
+          additionalProperties: {type: string}
+        status: {$ref: "#/components/schemas/ActionStatus"}
+        requires_approval: {type: boolean}
+        requested_by: {type: string}
+        idempotency_key: {type: string}
+        created_at: {$ref: "#/components/schemas/Timestamp"}
+        result: {type: [object, "null"]}
+    CaseMetrics:
+      type: object
+      additionalProperties: false
+      required: [agent_started_at, elapsed_seconds]
+      properties:
+        agent_started_at: {$ref: "#/components/schemas/NullableTimestamp"}
+        elapsed_seconds: {type: [number, "null"], minimum: 0}
+    CaseDetail:
+      type: object
+      additionalProperties: false
+      required: [id, status, notice, extraction, trace, batch_decisions, actions, metrics]
+      properties:
+        id: {type: string}
+        status: {$ref: "#/components/schemas/CaseStatus"}
+        duplicate_of: {type: [string, "null"]}
+        opened_at: {$ref: "#/components/schemas/Timestamp"}
+        contained_at: {$ref: "#/components/schemas/NullableTimestamp"}
+        notice: {$ref: "#/components/schemas/NoticeRef"}
+        extraction:
+          oneOf:
+            - {$ref: "#/components/schemas/Extraction"}
+            - {type: "null"}
+        trace:
+          oneOf:
+            - {$ref: "#/components/schemas/Trace"}
+            - {type: "null"}
+        batch_decisions:
+          type: array
+          items: {$ref: "#/components/schemas/BatchDecision"}
+        actions:
+          type: array
+          items: {$ref: "#/components/schemas/Action"}
+        metrics: {$ref: "#/components/schemas/CaseMetrics"}
+    RunStarted:
+      type: object
+      additionalProperties: false
+      required: [case_id, run_id]
+      properties:
+        case_id: {type: string}
+        run_id: {type: string}
+    AuditEvent:
+      type: object
+      additionalProperties: false
+      required: [id, case_id, ts, actor, kind, payload, prev_hash, hash]
+      properties:
+        id: {type: string}
+        case_id: {type: string}
+        ts: {$ref: "#/components/schemas/Timestamp"}
+        actor: {type: string, description: "Username or labellock-agent"}
+        kind: {type: string}
+        payload: {type: object}
+        prev_hash: {type: [string, "null"]}
+        hash: {type: string}
+    ReportBatch:
+      type: object
+      additionalProperties: false
+      required: [batch_id, decision, final_state, verified]
+      properties:
+        batch_id: {type: string}
+        decision: {$ref: "#/components/schemas/BatchDecisionValue"}
+        final_state: {type: string, description: "e.g. HELD, REMOVED_FROM_SHIPMENT, DISPOSITIONED"}
+        verified: {type: boolean}
+    CaseReport:
+      type: object
+      additionalProperties: false
+      required: [case_id, status, opened_at, contained_at, batches, action_counts, metrics]
+      properties:
+        case_id: {type: string}
+        status: {$ref: "#/components/schemas/CaseStatus"}
+        opened_at: {$ref: "#/components/schemas/Timestamp"}
+        contained_at: {$ref: "#/components/schemas/NullableTimestamp"}
+        batches:
+          type: array
+          items: {$ref: "#/components/schemas/ReportBatch"}
+        action_counts:
+          type: object
+          description: "Count of actions per action_status."
+          propertyNames: {$ref: "#/components/schemas/ActionStatus"}
+          additionalProperties: {type: integer, minimum: 0}
+        metrics:
+          type: object
+          additionalProperties: false
+          required: [agent_started_at, elapsed_seconds, seconds_to_contained]
+          properties:
+            agent_started_at: {$ref: "#/components/schemas/NullableTimestamp"}
+            elapsed_seconds: {type: [number, "null"], minimum: 0}
+            seconds_to_contained: {type: [number, "null"], minimum: 0}
+
+    # ---- decisions
+    ApproveRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        comment: {type: string}
+    RejectRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: {type: string, minLength: 1}
+    ReleaseRequest:
+      type: object
+      additionalProperties: false
+      required: [batch_id, reason]
+      properties:
+        batch_id: {type: string}
+        reason: {type: string, minLength: 1}
+    DispositionRequest:
+      type: object
+      additionalProperties: false
+      required: [batch_id, disposition, evidence]
+      properties:
+        batch_id: {type: string}
+        disposition: {$ref: "#/components/schemas/DispositionValue"}
+        evidence: {type: string, minLength: 1}
+    Disposition:
+      type: object
+      additionalProperties: false
+      required: [id, case_id, batch_id, disposition, evidence, recorded_by, recorded_at]
+      properties:
+        id: {type: string}
+        case_id: {type: string}
+        batch_id: {type: string}
+        disposition: {$ref: "#/components/schemas/DispositionValue"}
+        evidence: {type: string}
+        recorded_by: {type: string}
+        recorded_at: {$ref: "#/components/schemas/Timestamp"}
+
+    # ---- ROI (P1)
+    BenchmarkCreate:
+      type: object
+      additionalProperties: false
+      required: [scenario_id, mode, seconds, batches_found, false_holds, operator]
+      properties:
+        scenario_id: {type: string}
+        mode: {type: string, enum: [manual, agent]}
+        seconds: {type: number, minimum: 0}
+        batches_found: {type: integer, minimum: 0}
+        false_holds: {type: integer, minimum: 0}
+        operator: {type: string}
+    Benchmark:
+      type: object
+      additionalProperties: false
+      required: [id, created_at, scenario_id, mode, seconds, batches_found, false_holds, operator]
+      properties:
+        id: {type: string}
+        created_at: {$ref: "#/components/schemas/Timestamp"}
+        scenario_id: {type: string}
+        mode: {type: string, enum: [manual, agent]}
+        seconds: {type: number, minimum: 0}
+        batches_found: {type: integer, minimum: 0}
+        false_holds: {type: integer, minimum: 0}
+        operator: {type: string}
+    RoiSummary:
+      type: object
+      additionalProperties: false
+      required: [measured, assumptions]
+      properties:
+        measured:
+          type: object
+          description: "Our own timed runs and eval results."
+          additionalProperties: false
+          required: [manual_runs, agent_runs, manual_median_seconds, agent_median_seconds, eval]
+          properties:
+            manual_runs: {type: integer, minimum: 0}
+            agent_runs: {type: integer, minimum: 0}
+            manual_median_seconds: {type: [number, "null"]}
+            agent_median_seconds: {type: [number, "null"]}
+            eval:
+              type: object
+              additionalProperties: {type: [number, "null"]}
+        assumptions:
+          type: array
+          description: "Editable inputs, never results."
+          items:
+            type: object
+            additionalProperties: false
+            required: [key, label, value, unit]
+            properties:
+              key: {type: string}
+              label: {type: string}
+              value: {type: number}
+              unit: {type: string}
+
+    # ---- demo
+    DemoFaults:
+      type: object
+      additionalProperties: false
+      required: [wms_silent_hold_failure]
+      properties:
+        wms_silent_hold_failure: {type: boolean}

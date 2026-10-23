@@ -1,0 +1,4 @@
+[
+  {"notice_id": "n_002", "case_id": "c_002", "supplier": "Valley Ingredients", "subject": "Updated COA for oat flour, no formulation change", "received_at": "2026-10-23T11:20:00Z", "has_attachment": true, "case_status": "RECEIVED"},
+  {"notice_id": "n_001", "case_id": "c_001", "supplier": "Valley Ingredients", "subject": "Lecithin source change from lot VL-2291", "received_at": "2026-10-23T09:00:00Z", "has_attachment": true, "case_status": "AWAITING_APPROVAL"}
+]

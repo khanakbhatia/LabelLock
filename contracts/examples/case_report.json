@@ -1,0 +1,12 @@
+{
+  "case_id": "c_001",
+  "status": "CONTAINED",
+  "opened_at": "2026-10-23T09:00:01Z",
+  "contained_at": "2026-10-23T09:07:12Z",
+  "batches": [
+    {"batch_id": "FG-1041", "decision": "HOLD_RELABEL", "final_state": "HELD", "verified": true},
+    {"batch_id": "FG-1043", "decision": "CLAIM_CONFLICT", "final_state": "REMOVED_FROM_SHIPMENT", "verified": true}
+  ],
+  "action_counts": {"VERIFIED": 3},
+  "metrics": {"agent_started_at": "2026-10-23T09:00:04Z", "elapsed_seconds": 41, "seconds_to_contained": 431}
+}

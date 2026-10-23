@@ -1,0 +1,8 @@
+[
+  {"id": "e_001", "case_id": "c_001", "ts": "2026-10-23T09:00:01Z", "actor": "valley.ingredients", "kind": "NOTICE_RECEIVED", "payload": {"notice_id": "n_001", "source": "supplier_portal"}, "prev_hash": null, "hash": "sha256:a1"},
+  {"id": "e_002", "case_id": "c_001", "ts": "2026-10-23T09:00:04Z", "actor": "priya.qa", "kind": "RUN_STARTED", "payload": {"run_id": "r_001"}, "prev_hash": "sha256:a1", "hash": "sha256:a2"},
+  {"id": "e_003", "case_id": "c_001", "ts": "2026-10-23T09:00:19Z", "actor": "labellock-agent", "kind": "EXTRACTION_COMPLETED", "payload": {"found": 3, "missing": 1, "ambiguous": 0}, "prev_hash": "sha256:a2", "hash": "sha256:a3"},
+  {"id": "e_004", "case_id": "c_001", "ts": "2026-10-23T09:00:27Z", "actor": "labellock-agent", "kind": "TRACE_COMPLETED", "payload": {"material_lots": ["VL-2291"], "batches": ["FG-1041", "FG-1043"]}, "prev_hash": "sha256:a3", "hash": "sha256:a4"},
+  {"id": "e_005", "case_id": "c_001", "ts": "2026-10-23T09:00:31Z", "actor": "labellock-agent", "kind": "ACTION_VERIFIED", "payload": {"action_id": "a_010", "type": "PLACE_HOLD", "batch_id": "FG-1041"}, "prev_hash": "sha256:a4", "hash": "sha256:a5"},
+  {"id": "e_006", "case_id": "c_001", "ts": "2026-10-23T09:00:44Z", "actor": "labellock-agent", "kind": "APPROVAL_REQUESTED", "payload": {"action_id": "a_012", "type": "REMOVE_FROM_SHIPMENT"}, "prev_hash": "sha256:a5", "hash": "sha256:a6"}
+]
