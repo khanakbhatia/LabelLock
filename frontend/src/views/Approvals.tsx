@@ -4,6 +4,7 @@ import { api, ApiError, type Action } from '../api';
 import { useAuth } from '../auth';
 import { ApprovalDecision, describeAction } from './ApprovalDecision';
 import { Chip } from './caseDisplay';
+import { ActionDetail } from './actionDetail';
 import styles from './Workspace.module.css';
 
 const age = (value?: string) => {
@@ -52,6 +53,7 @@ export function Approvals() {
     {loading ? <p role="status">Loading approvals…</p> : !error && actions.length === 0 ? <section className={styles.card}>No pending approvals.</section> : actions.map(action => <section className={styles.card} key={action.id} aria-label={`Action ${action.id}`}>
       <div className={styles.heading}><div><small>{action.id} · {age(action.created_at)}</small><h2>{describe(action)}</h2></div><Chip tone={action.status === 'REJECTED' ? 'danger' : action.status === 'PENDING_APPROVAL' ? 'warning' : 'good'}>{action.status.replaceAll('_', ' ')}</Chip></div>
       <p>Requested by: {action.requested_by ?? 'Unknown'}</p>
+      <ActionDetail action={action} open />
       {action.case_id && <Link to={`/cases/${action.case_id}`}>View case {action.case_id}</Link>}
       {user?.role === 'qa_manager' && token && <ApprovalDecision action={action} description={describe(action)} token={token} onDecision={updated => { setActions(current => current.map(item => item.id === updated.id ? updated : item)); setMessage(`${updated.id}: ${updated.status.replaceAll('_', ' ')}`); }} />}
     </section>)}
