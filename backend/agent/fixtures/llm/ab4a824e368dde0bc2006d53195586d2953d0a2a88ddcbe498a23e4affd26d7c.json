@@ -1,0 +1,45 @@
+{
+  "_notice": "Recorded from claude-opus-5-5",
+  "fields": {
+    "material": {
+      "value": "Lecithin (RM-114)",
+      "status": "FOUND",
+      "confidence": 0.95,
+      "evidence": {
+        "source": "email",
+        "page": null,
+        "quote": "Lecithin (RM-114)"
+      }
+    },
+    "new_ingredient": {
+      "value": "soy lecithin (one-off substitution for lot VL-2290 only; later lots remain sunflower lecithin)",
+      "status": "AMBIGUOUS",
+      "confidence": 0.7,
+      "evidence": {
+        "source": "email",
+        "page": null,
+        "quote": "supplied as soy lecithin as a one-off substitution"
+      }
+    },
+    "effective_lot": {
+      "value": "VL-2290",
+      "status": "AMBIGUOUS",
+      "confidence": 0.65,
+      "evidence": {
+        "source": "attachment",
+        "page": 1,
+        "quote": "Affected lot: VL-2290 only"
+      }
+    },
+    "may_contain": {
+      "value": null,
+      "status": "MISSING",
+      "confidence": null,
+      "evidence": null
+    }
+  },
+  "uncertainty_flags": [
+    "LLM_UNCERTAIN"
+  ],
+  "model": "claude-opus-5-5"
+}

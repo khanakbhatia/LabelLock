@@ -31,6 +31,8 @@ class Settings:
     seed_dir: Path = REPO_ROOT / "data" / "seed"
     llm_mode: str = "mock"
     llm_model: str = "claude-opus-5-5"
+    eval_results_path: Path = REPO_ROOT / "backend" / "scenarios" / "results" / "latest.json"
+    roi_assumptions_path: Path = REPO_ROOT / "backend" / "config" / "roi_assumptions.json"
 
     @property
     def cors_origins(self) -> list[str]:

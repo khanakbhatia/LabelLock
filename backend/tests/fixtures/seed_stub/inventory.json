@@ -4,5 +4,16 @@
   {"batch_id": "FG-1041", "location": "DC-EAST", "qty": 480, "status": "AVAILABLE"},
   {"batch_id": "FG-1042", "location": "DC-EAST", "qty": 150, "status": "AVAILABLE"},
   {"batch_id": "FG-1042", "location": "PLANT-1", "qty": 200, "status": "AVAILABLE"},
-  {"batch_id": "FG-1043", "location": "DC-EAST", "qty": 120, "status": "AVAILABLE"}
+  {"batch_id": "FG-1043", "location": "DC-EAST", "qty": 120, "status": "AVAILABLE"},
+  {"batch_id": "FG-2001", "location": "DC-EAST", "qty": 300, "status": "AVAILABLE"},
+  {"batch_id": "FG-2101", "location": "DC-EAST", "qty": 200, "status": "AVAILABLE"},
+  {"batch_id": "FG-2102", "location": "PLANT-1", "qty": 150, "status": "AVAILABLE"},
+  {"batch_id": "FG-2201", "location": "DC-EAST", "qty": 90, "status": "AVAILABLE"},
+  {"batch_id": "FG-2301", "location": "DC-EAST", "qty": 210, "status": "AVAILABLE"},
+  {"batch_id": "FG-2401", "location": "PLANT-1", "qty": 500, "status": "AVAILABLE"},
+  {"batch_id": "FG-2402", "location": "PLANT-1", "qty": 0, "status": "AVAILABLE"},
+  {"batch_id": "FG-2501", "location": "PLANT-1", "qty": 400, "status": "AVAILABLE"},
+  {"batch_id": "FG-2601", "location": "PLANT-1", "qty": 250, "status": "AVAILABLE"},
+  {"batch_id": "FG-2701", "location": "DC-EAST", "qty": 100, "status": "AVAILABLE"},
+  {"batch_id": "FG-2702", "location": "PLANT-1", "qty": 100, "status": "AVAILABLE"}
 ]

@@ -1,0 +1,43 @@
+{
+  "_notice": "Recorded from claude-opus-5-5",
+  "fields": {
+    "material": {
+      "value": "Lecithin (RM-114)",
+      "status": "FOUND",
+      "confidence": 0.95,
+      "evidence": {
+        "source": "attachment",
+        "page": 1,
+        "quote": "Item: RM-114 Lecithin"
+      }
+    },
+    "new_ingredient": {
+      "value": "soy lecithin",
+      "status": "FOUND",
+      "confidence": 0.95,
+      "evidence": {
+        "source": "email",
+        "page": null,
+        "quote": "switches from sunflower to soy lecithin"
+      }
+    },
+    "effective_lot": {
+      "value": "VL-2291",
+      "status": "FOUND",
+      "confidence": 0.97,
+      "evidence": {
+        "source": "attachment",
+        "page": 1,
+        "quote": "Applies from lot: VL-2291"
+      }
+    },
+    "may_contain": {
+      "value": null,
+      "status": "MISSING",
+      "confidence": null,
+      "evidence": null
+    }
+  },
+  "uncertainty_flags": [],
+  "model": "claude-opus-5-5"
+}

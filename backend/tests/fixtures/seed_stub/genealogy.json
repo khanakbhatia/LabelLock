@@ -8,5 +8,17 @@
   {"batch_id": "FG-1042", "material_lot_id": "VL-2291"},
   {"batch_id": "FG-1042", "material_lot_id": "VM-0091"},
   {"batch_id": "FG-1043", "material_lot_id": "VL-2291"},
-  {"batch_id": "FG-1043", "material_lot_id": "VS-1180"}
+  {"batch_id": "FG-1043", "material_lot_id": "VS-1180"},
+  {"batch_id": "FG-2001", "material_lot_id": "VS-3301"},
+  {"batch_id": "FG-2101", "material_lot_id": "PC-4410"},
+  {"batch_id": "FG-2102", "material_lot_id": "PC-4410"},
+  {"batch_id": "FG-2201", "material_lot_id": "SG-5520"},
+  {"batch_id": "FG-2301", "material_lot_id": "BD-7781"},
+  {"batch_id": "FG-2302", "material_lot_id": "BD-7781"},
+  {"batch_id": "FG-2401", "material_lot_id": "CC-8120"},
+  {"batch_id": "FG-2402", "material_lot_id": "CC-8120"},
+  {"batch_id": "FG-2501", "material_lot_id": "PO-7711"},
+  {"batch_id": "FG-2601", "material_lot_id": "VL-2293"},
+  {"batch_id": "FG-2701", "material_lot_id": "VH-0413"},
+  {"batch_id": "FG-2702", "material_lot_id": "VH-0413"}
 ]

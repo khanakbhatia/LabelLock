@@ -3,5 +3,17 @@
   {"batch_id": "FG-1040", "sku": "OCB-100", "produced_at": "2026-10-05T06:00:00Z"},
   {"batch_id": "FG-1041", "sku": "HGB-200", "produced_at": "2026-10-06T06:00:00Z"},
   {"batch_id": "FG-1042", "sku": "HGB-200", "produced_at": "2026-10-08T06:00:00Z"},
-  {"batch_id": "FG-1043", "sku": "ASB-100", "produced_at": "2026-10-09T06:00:00Z"}
+  {"batch_id": "FG-1043", "sku": "ASB-100", "produced_at": "2026-10-09T06:00:00Z"},
+  {"batch_id": "FG-2001", "sku": "SCB-300", "produced_at": "2026-10-06T06:00:00Z"},
+  {"batch_id": "FG-2101", "sku": "PCB-400", "produced_at": "2026-10-07T06:00:00Z"},
+  {"batch_id": "FG-2102", "sku": "DCB-410", "produced_at": "2026-10-07T09:00:00Z"},
+  {"batch_id": "FG-2201", "sku": "HSN-500", "produced_at": "2026-10-08T06:00:00Z"},
+  {"batch_id": "FG-2301", "sku": "GFB-600", "produced_at": "2026-10-02T06:00:00Z"},
+  {"batch_id": "FG-2302", "sku": "GFB-600", "produced_at": "2026-10-01T06:00:00Z"},
+  {"batch_id": "FG-2401", "sku": "CRK-700", "produced_at": "2026-10-01T06:00:00Z"},
+  {"batch_id": "FG-2402", "sku": "CRK-700", "produced_at": "2026-09-30T06:00:00Z"},
+  {"batch_id": "FG-2501", "sku": "OCB-100", "produced_at": "2026-10-12T06:00:00Z"},
+  {"batch_id": "FG-2601", "sku": "OCB-100", "produced_at": "2026-10-13T06:00:00Z"},
+  {"batch_id": "FG-2701", "sku": "HGB-200", "produced_at": "2026-10-13T06:00:00Z"},
+  {"batch_id": "FG-2702", "sku": "OCB-100", "produced_at": "2026-10-14T06:00:00Z"}
 ]

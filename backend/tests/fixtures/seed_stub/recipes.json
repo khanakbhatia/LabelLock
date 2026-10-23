@@ -8,5 +8,13 @@
   {"sku": "HGB-200", "material_id": "RM-114"},
   {"sku": "ASB-100", "material_id": "RM-410"},
   {"sku": "ASB-100", "material_id": "RM-201"},
-  {"sku": "ASB-100", "material_id": "RM-114"}
+  {"sku": "ASB-100", "material_id": "RM-114"},
+  {"sku": "SCB-300", "material_id": "RM-620"},
+  {"sku": "PCB-400", "material_id": "RM-640"},
+  {"sku": "DCB-410", "material_id": "RM-640"},
+  {"sku": "DCB-410", "material_id": "RM-502"},
+  {"sku": "HSN-500", "material_id": "RM-660"},
+  {"sku": "GFB-600", "material_id": "RM-680"},
+  {"sku": "GFB-600", "material_id": "RM-201"},
+  {"sku": "CRK-700", "material_id": "RM-700"}
 ]

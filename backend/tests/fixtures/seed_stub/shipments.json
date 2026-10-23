@@ -1,3 +1,5 @@
 [
-  {"shipment_id": "L-552", "destination": "Retailer DC 7", "departs_at": "2026-10-23T14:00:00Z", "status": "PLANNED"}
+  {"shipment_id": "L-552", "destination": "Retailer DC 7", "departs_at": "2026-10-23T14:00:00Z", "status": "PLANNED"},
+  {"shipment_id": "L-610", "destination": "Retailer DC 3", "departs_at": "2026-10-24T09:00:00Z", "status": "PLANNED"},
+  {"shipment_id": "L-590", "destination": "Retailer DC 9", "departs_at": "2026-10-20T09:00:00Z", "status": "DEPARTED"}
 ]

@@ -1,0 +1,43 @@
+{
+  "_notice": "Recorded from claude-opus-5-5",
+  "fields": {
+    "material": {
+      "value": "Seed blend (RM-620)",
+      "status": "FOUND",
+      "confidence": 0.97,
+      "evidence": {
+        "source": "email",
+        "page": null,
+        "quote": "Seed blend (RM-620)"
+      }
+    },
+    "new_ingredient": {
+      "value": "sesame seeds",
+      "status": "FOUND",
+      "confidence": 0.92,
+      "evidence": {
+        "source": "email",
+        "page": null,
+        "quote": "will contain sesame seeds"
+      }
+    },
+    "effective_lot": {
+      "value": "VS-3301",
+      "status": "FOUND",
+      "confidence": 0.97,
+      "evidence": {
+        "source": "email",
+        "page": null,
+        "quote": "From lot VS-3301"
+      }
+    },
+    "may_contain": {
+      "value": null,
+      "status": "MISSING",
+      "confidence": null,
+      "evidence": null
+    }
+  },
+  "uncertainty_flags": [],
+  "model": "claude-opus-5-5"
+}

@@ -168,6 +168,20 @@ class Disposition(Base):
     recorded_at: Mapped[str] = mapped_column(String)
 
 
+class Benchmark(Base):
+    """A timed run of one scenario, by a person (manual) or the agent."""
+    __tablename__ = "benchmarks"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    scenario_id: Mapped[str] = mapped_column(String, index=True)
+    mode: Mapped[str] = mapped_column(String)  # manual | agent
+    seconds: Mapped[float] = mapped_column(Float)
+    batches_found: Mapped[int] = mapped_column(Integer)
+    false_holds: Mapped[int] = mapped_column(Integer)
+    operator: Mapped[str] = mapped_column(String)
+    created_at: Mapped[str] = mapped_column(String)
+
+
 class Verification(Base):
     __tablename__ = "verifications"
 

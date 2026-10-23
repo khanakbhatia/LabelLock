@@ -1,0 +1,31 @@
+{
+  "_notice": "Recorded from claude-opus-5-5",
+  "fields": {
+    "material": {
+      "value": null,
+      "status": "MISSING",
+      "confidence": null,
+      "evidence": null
+    },
+    "new_ingredient": {
+      "value": null,
+      "status": "MISSING",
+      "confidence": null,
+      "evidence": null
+    },
+    "effective_lot": {
+      "value": null,
+      "status": "MISSING",
+      "confidence": null,
+      "evidence": null
+    },
+    "may_contain": {
+      "value": null,
+      "status": "MISSING",
+      "confidence": null,
+      "evidence": null
+    }
+  },
+  "uncertainty_flags": [],
+  "model": "claude-opus-5-5"
+}

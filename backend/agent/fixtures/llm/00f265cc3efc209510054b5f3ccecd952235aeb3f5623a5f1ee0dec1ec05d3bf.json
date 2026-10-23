@@ -1,0 +1,45 @@
+{
+  "_notice": "Recorded from claude-opus-5-5",
+  "fields": {
+    "material": {
+      "value": "Lecithin, code RM-114",
+      "status": "FOUND",
+      "confidence": 0.95,
+      "evidence": {
+        "source": "attachment",
+        "page": 1,
+        "quote": "Product: Lecithin, code RM-114"
+      }
+    },
+    "new_ingredient": {
+      "value": "soy lecithin",
+      "status": "FOUND",
+      "confidence": 0.85,
+      "evidence": {
+        "source": "attachment",
+        "page": 2,
+        "quote": "Composition changes to soy lecithin."
+      }
+    },
+    "effective_lot": {
+      "value": "VL-2291",
+      "status": "FOUND",
+      "confidence": 0.95,
+      "evidence": {
+        "source": "attachment",
+        "page": 2,
+        "quote": "Effective from lot VL-2291."
+      }
+    },
+    "may_contain": {
+      "value": null,
+      "status": "MISSING",
+      "confidence": null,
+      "evidence": null
+    }
+  },
+  "uncertainty_flags": [
+    "LLM_UNCERTAIN"
+  ],
+  "model": "claude-opus-5-5"
+}

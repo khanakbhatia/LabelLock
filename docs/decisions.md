@@ -99,3 +99,25 @@ No contract shape changes; every new response validates against `openapi.yaml`. 
 - Failure handling: refusal, truncation or unparseable output -> every field MISSING + `LLM_UNCERTAIN` (the case
   escalates); API errors and missing credentials -> `UPSTREAM_FAILED`, the run fails and the case escalates with
   the reason in the `RUN_FAILED` event. A failed extraction is never recorded as a fixture.
+
+## 2026-10-23 — Eval suite, benchmarks, ROI metrics (Anvi)
+
+- `backend/scenarios/scenarios.json`: 20 scenarios (notice + expected status, per-batch decisions with allowed
+  alternatives, batches that must stay untouched). PDFs are generated from text by `scenarios/pdf.py`, so content
+  hashes are reproducible. Scenarios use the stub seed (extended; RM-114 / VL-2291 data unchanged).
+- `python -m scenarios.runner` runs every scenario through the real API in mock mode (free, deterministic);
+  `--record-missing` calls Claude only for notices with no recording and saves them. All 20 notices are recorded
+  (16 live calls to claude-opus-5-5, $0.267 total). Only recording runs (or `--save`) write
+  `scenarios/results/latest.json`, so the real-latency run is not overwritten by replays.
+- Recorded result: 16/20 pass, 0 false holds, batch recall 0.909, decision accuracy 0.844, median agent time 4.5 s
+  (live Claude). The 4 failures are kept as named `known_gap`s, not hidden by loosening expectations:
+  - S03 / and S16, S17 (pass, but by escalating): `LLM_UNCERTAIN` -> `UNCERTAIN_ESCALATE` places no protective holds
+    (M1 spec). Proposal: hold and escalate, since a hold is reversible.
+  - S04: one-off lot deviation reads as AMBIGUOUS `effective_lot` (prompt defines it as the first lot of a change).
+  - S11: a certificate ("lot X is soy lecithin") reads as AMBIGUOUS; safe but a false alarm.
+  - S19: `may_contain` is extracted but rules ignore it; precautionary statements escalate instead of HOLD_RELABEL.
+  The pytest gate fails on any unexpected failure and on a known gap that starts passing.
+- `POST /benchmarks` (qa_*, admin): manual or agent timed runs; unknown scenario ids -> 422.
+  `GET /metrics/roi`: `measured` = benchmark rows + the last eval file (agent timings only where Claude was live);
+  `assumptions` from `backend/config/roi_assumptions.json` (editable inputs, never results).
+- Contract examples added: `benchmark.json`, `roi_summary.json` (no schema changes).

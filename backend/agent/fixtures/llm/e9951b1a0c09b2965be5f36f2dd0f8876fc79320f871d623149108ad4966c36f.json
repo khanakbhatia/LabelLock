@@ -1,0 +1,45 @@
+{
+  "_notice": "Recorded from claude-opus-5-5",
+  "fields": {
+    "material": {
+      "value": "Rolled oats (RM-201)",
+      "status": "FOUND",
+      "confidence": 0.97,
+      "evidence": {
+        "source": "email",
+        "page": null,
+        "quote": "Rolled oats (RM-201)"
+      }
+    },
+    "new_ingredient": {
+      "value": "100% rolled oats (composition unchanged; only the mill changes, to Ridgeway)",
+      "status": "FOUND",
+      "confidence": 0.85,
+      "evidence": {
+        "source": "email",
+        "page": null,
+        "quote": "Composition is unchanged: 100% rolled oats."
+      }
+    },
+    "effective_lot": {
+      "value": "PO-7711",
+      "status": "FOUND",
+      "confidence": 0.95,
+      "evidence": {
+        "source": "email",
+        "page": null,
+        "quote": "from lot PO-7711"
+      }
+    },
+    "may_contain": {
+      "value": null,
+      "status": "MISSING",
+      "confidence": null,
+      "evidence": null
+    }
+  },
+  "uncertainty_flags": [
+    "LLM_UNCERTAIN"
+  ],
+  "model": "claude-opus-5-5"
+}

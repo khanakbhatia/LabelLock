@@ -60,6 +60,12 @@ def resolve_sender(db: Session, from_header: str) -> tuple[str, str | None]:
     return address, supplier_id
 
 
+def notice_content_hash(subject: str, body: str, attachments: list[bytes]) -> str:
+    """Identity of a notice's content; MockLLM fixtures are keyed by it."""
+    digests = [hashlib.sha256(a).hexdigest() for a in attachments]
+    return "sha256:" + hashlib.sha256("\n".join([subject, body, *digests]).encode()).hexdigest()
+
+
 def store_file(upload_dir: Path, data: bytes) -> tuple[str, str]:
     """Content-addressed storage; returns (path, sha256). Writing the same bytes twice is harmless."""
     digest = hashlib.sha256(data).hexdigest()
@@ -91,9 +97,7 @@ def create_notice_case(
     caller) when gmail_message_id already exists.
     """
     stored = [(u, *store_file(upload_dir, u.data)) for u in uploads]
-    content_hash = "sha256:" + hashlib.sha256(
-        "\n".join([subject, body, *(digest for _, _, digest in stored)]).encode()
-    ).hexdigest()
+    content_hash = notice_content_hash(subject, body, [u.data for u in uploads])
     flags = [] if supplier_id else [SUPPLIER_UNVERIFIED]
 
     notice = Notice(id=new_id("n"), source=source, supplier_id=supplier_id, from_address=from_address,
