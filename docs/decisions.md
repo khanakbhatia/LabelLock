@@ -60,3 +60,25 @@ Decisions:
 - `SUPPLIER_UNVERIFIED` cases are extracted, traced and decided, then escalate before any write.
 - Approvals table and the approve/reject flow are M2; the adapter gate already refuses non-APPROVED actions.
 - New tables require deleting an old `labellock.db` (create_all does not migrate).
+
+## 2026-10-23 — M2 backend: notice reads, approvals, execution, dispositions, release (Anvi)
+
+No contract shape changes; every new response validates against `openapi.yaml`. Behaviour the UI relies on:
+- `GET /inbox`, `GET /notices?mine=true` (only `mine=true`; supplier sees notices whose supplier is theirs),
+  `GET /notices/{id}` and `/attachment` (a supplier gets 404, not 403, for other suppliers' notices; the PDF is
+  served with `X-Content-Type-Options: nosniff` as a download).
+- `GET /approvals?status=` lists actions with `requires_approval`, newest first.
+- `POST /actions/{id}/approve` records the decision and returns the action as `APPROVED`; the agent then runs in
+  the background: a new `execute` step (between act and verify, re-run every time) calls the sim through the
+  adapter gate, and verify re-reads it (shipment line gone; holds RELEASED). If a run is already in progress the
+  approval is kept and an `EXECUTION_DEFERRED` event is written; the next run executes it.
+- The adapter gate now needs both `status == APPROVED` and an `approvals` row decided by a qa_manager.
+- `POST /actions/{id}/reject` needs a non-empty `reason`. A rejected `REMOVE_FROM_SHIPMENT` escalates the case
+  (affected stock may ship); a rejected `RELEASE_HOLD` just leaves the hold on.
+- Dispositions: qa_manager, batch must belong to the case, latest one wins. Release requests: no disposition, or
+  `DESTROY` / `RETURN_TO_SUPPLIER` → 409 `POLICY_VIOLATION` (audited). Releasable: `RELEASE_AS_IS`, `RELABEL`, `REWORK`.
+- `RELEASE_HOLD.target` is `{batch_id, hold_ids}` with `hold_ids` comma-separated (the contract allows string
+  values only); one release covers every location this case held.
+- New audit kinds: `APPROVAL_DECIDED`, `DISPOSITION_RECORDED`, `EXECUTION_DEFERRED`.
+- Holds are shared physical state: a second case on the same lot, without a demo reset, finds the stock already
+  HELD by the first case and verifies it as held. Reset before each demo scenario.
