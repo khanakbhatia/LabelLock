@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "LabelLock Gmail Side Panel",
+  "version": "0.1.0",
+  "description": "Review supplier emails in LabelLock beside Gmail.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwXv1OGVcAr1vHo9vGrBdjSIxRKiRIkZxSdYb3xzI5+yvDh11HISbadbXrdtuhG+SeMBQTlIf1m7y7avLGmo5FYr0qa+vfb+kF/avwJppEAV7ZNwnfae3nbI4B8veR2NaZj88/PcHkZZxTHKQvBkPQAWoQJWrQbdKW/8FEapDw9Je0ZHW9+IwFx364m+WjSd8XhJklj5HeujlfWcmVedyHVon/aL/WFmtb5Z1AAQwm8lLNzs8nkr+WfAU6rmnp2P3sm9aylhpjL/i4wORh9yLM957iZDv3gEAIL6yj1ickchoJafUHMx7VVv0VdgM4q6wffYw1L1pkFkSzLh1WlRRowIDAQAB",
+  "permissions": ["sidePanel", "identity", "storage"],
+  "host_permissions": ["https://mail.google.com/*", "https://gmail.googleapis.com/*", "http://localhost:8000/*"],
+  "oauth2": {
+    "client_id": "REPLACE_WITH_EXT_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": ["https://www.googleapis.com/auth/gmail.readonly"]
+  },
+  "side_panel": { "default_path": "panel.html" },
+  "action": { "default_title": "Open LabelLock beside Gmail" },
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [{ "matches": ["https://mail.google.com/*"], "js": ["content.js"], "run_at": "document_idle" }]
+}

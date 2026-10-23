@@ -1,0 +1,43 @@
+{
+  "id": "newgmailmessage123",
+  "threadId": "threadmessage123",
+  "internalDate": "1792755600000",
+  "payload": {
+    "mimeType": "multipart/mixed",
+    "headers": [
+      {
+        "name": "From",
+        "value": "Valley Ingredients QA <qa@valley-ingredients.example>"
+      },
+      {
+        "name": "Subject",
+        "value": "Lecithin source change from lot VL-2291"
+      },
+      {
+        "name": "Date",
+        "value": "Fri, 23 Oct 2026 09:00:00 GMT"
+      }
+    ],
+    "parts": [
+      {
+        "mimeType": "multipart/alternative",
+        "parts": [
+          {
+            "mimeType": "text/plain",
+            "body": {
+              "data": "RGVhciBOb3J0aGZpZWxkIFFBLAoKUGxlYXNlIG5vdGUgdGhhdCBMZWNpdGhpbiAoUk0tMTE0KSB3aWxsIGJlIHN1cHBsaWVkIGFzIHNveSBsZWNpdGhpbiBmcm9tIGxvdCBWTC0yMjkxIG9ud2FyZC4gVXBkYXRlZCBzcGVjaWZpY2F0aW9uIGF0dGFjaGVkLgoKVmFsbGV5IEluZ3JlZGllbnRzIFF1YWxpdHk"
+            }
+          }
+        ]
+      },
+      {
+        "mimeType": "application/pdf",
+        "filename": "RM-114_spec_rev4.pdf",
+        "body": {
+          "attachmentId": "attach_01",
+          "size": 86
+        }
+      }
+    ]
+  }
+}
