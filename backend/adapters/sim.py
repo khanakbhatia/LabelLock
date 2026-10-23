@@ -213,6 +213,9 @@ class SimAdminClient:
     def __init__(self, http: SimHttp):
         self.http = http
 
+    def get_faults(self) -> dict:
+        return self.http.request("admin", "GET", "/sim/admin/faults")
+
     def set_faults(self, wms_silent_hold_failure: bool) -> dict:
         return self.http.request("admin", "PUT", "/sim/admin/faults", body={"wms_silent_hold_failure": wms_silent_hold_failure})
 

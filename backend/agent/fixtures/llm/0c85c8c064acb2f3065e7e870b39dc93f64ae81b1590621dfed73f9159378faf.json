@@ -18,7 +18,7 @@
       "evidence": {
         "source": "email",
         "page": null,
-        "quote": "will be supplied as soy lecithin"
+        "quote": "supplied as soy lecithin"
       }
     },
     "effective_lot": {
@@ -41,5 +41,6 @@
   "uncertainty_flags": [
     "LLM_UNCERTAIN"
   ],
-  "model": "claude-opus-5-5"
+  "model": "claude-opus-5-5",
+  "prompt_version": "extract-v2"
 }

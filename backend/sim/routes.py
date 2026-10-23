@@ -227,6 +227,11 @@ class Faults(BaseModel):
     wms_silent_hold_failure: bool
 
 
+@router.get("/admin/faults")
+def get_faults(db: Session = Depends(get_sim_db)):
+    return {"wms_silent_hold_failure": fault_on(db, WMS_SILENT_HOLD_FAILURE)}
+
+
 @router.put("/admin/faults")
 def set_faults(body: Faults, db: Session = Depends(get_sim_db)):
     for name, enabled in body.model_dump().items():

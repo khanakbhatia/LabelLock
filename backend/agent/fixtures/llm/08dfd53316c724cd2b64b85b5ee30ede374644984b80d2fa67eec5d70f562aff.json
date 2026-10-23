@@ -24,11 +24,11 @@
     "effective_lot": {
       "value": "VL-2291",
       "status": "FOUND",
-      "confidence": 0.97,
+      "confidence": 0.95,
       "evidence": {
-        "source": "attachment",
-        "page": 1,
-        "quote": "Applies from lot: VL-2291"
+        "source": "email",
+        "page": null,
+        "quote": "From lot VL-2291"
       }
     },
     "may_contain": {
@@ -39,5 +39,6 @@
     }
   },
   "uncertainty_flags": [],
-  "model": "claude-opus-5-5"
+  "model": "claude-opus-5-5",
+  "prompt_version": "extract-v2"
 }
