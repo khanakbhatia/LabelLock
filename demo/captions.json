@@ -1,0 +1,295 @@
+[
+ {
+  "clip": "01",
+  "id": "01a",
+  "step": "STEP 1 / 11 · SUPPLIER",
+  "text": "A supplier reports a change: lecithin RM-114 becomes soy lecithin from lot VL-2291.",
+  "action": "Supplier signs in and writes the change notice",
+  "voice": "It starts the way it does today: a supplier sends a change notice.",
+  "start": 0.02,
+  "end": 16.19,
+  "position": "bottom"
+ },
+ {
+  "clip": "01",
+  "id": "01b",
+  "text": "The notice and its spec PDF arrive at Northfield QA as a new case.",
+  "action": "Attaches RM-114_spec_rev4.pdf, submits, confirmation shown",
+  "voice": "The spec PDF goes with it, and LabelLock opens a case.",
+  "start": 16.19,
+  "end": 23.14,
+  "position": "bottom"
+ },
+ {
+  "clip": "02",
+  "id": "02a",
+  "step": "STEP 2 / 11 · QA INBOX",
+  "text": "QA sees the new notice in the inbox, with its case status.",
+  "action": "QA specialist signs in; notice listed as RECEIVED",
+  "voice": "Our QA specialist sees it land in the inbox.",
+  "start": 0.01,
+  "end": 9.03,
+  "position": "bottom"
+ },
+ {
+  "clip": "02",
+  "id": "02b",
+  "text": "Opening it brings up the case workspace.",
+  "action": "Opens the notice",
+  "voice": "One click opens the case.",
+  "start": 9.03,
+  "end": 12.8,
+  "position": "bottom"
+ },
+ {
+  "clip": "03",
+  "id": "03a",
+  "step": "STEP 3 / 11 · AI ANALYSIS",
+  "text": "Run the agent. Claude reads the email and the PDF, live.",
+  "action": "Clicks Run agent; analysis completes",
+  "voice": "She runs the agent. Claude reads the email and the PDF.",
+  "start": 0.72,
+  "end": 9.98,
+  "position": "bottom"
+ },
+ {
+  "clip": "03",
+  "id": "03b",
+  "text": "Each field has its exact quote and source. Anything not stated is marked MISSING.",
+  "action": "Extracted fields with quotes, sources, MISSING flag",
+  "voice": "Every value is backed by an exact quote, and anything the supplier didn't say is flagged, not guessed.",
+  "start": 9.98,
+  "end": 17.63,
+  "position": "top"
+ },
+ {
+  "clip": "03",
+  "id": "03c",
+  "text": "Allergen decisions come from rules. The AI only extracts, with evidence.",
+  "action": "Soy mapped by rule ALG-SOY-LECITHIN",
+  "voice": "Soy is mapped by a named rule. The AI extracts; the rules decide.",
+  "start": 17.63,
+  "end": 23.63,
+  "position": "top"
+ },
+ {
+  "clip": "04",
+  "id": "04a",
+  "step": "STEP 4 / 11 · TRACE",
+  "text": "Lot VL-2291 traced to four batches, their stock locations, and shipment L-552.",
+  "action": "Batch Detective: lot to batches, locations, L-552",
+  "voice": "LabelLock traces the lot through the ERP and warehouse: four batches, where they sit, and one on a truck due out today.",
+  "start": 0.72,
+  "end": 10.17,
+  "position": "top"
+ },
+ {
+  "clip": "05",
+  "id": "05a",
+  "step": "STEP 5 / 11 · LABEL CHECK",
+  "text": "Oat Crunch Bar already declares soy: no impact, so the agent does nothing.",
+  "action": "FG-1040 NO_IMPACT",
+  "voice": "Each batch is checked against its own label. Oat Crunch Bar already declares soy, so nothing happens.",
+  "start": 2.52,
+  "end": 8.7,
+  "position": "top"
+ },
+ {
+  "clip": "05",
+  "id": "05b",
+  "text": "Honey Granola Bites declares milk only: hold and relabel.",
+  "action": "FG-1041 HOLD_RELABEL",
+  "voice": "Honey Granola Bites only declares milk: hold and relabel.",
+  "start": 8.7,
+  "end": 13.45,
+  "position": "top"
+ },
+ {
+  "clip": "05",
+  "id": "05c",
+  "text": "Allergy-Smart Seed Bar claims free from the top 9 allergens: claim conflict.",
+  "action": "FG-1043 CLAIM_CONFLICT",
+  "voice": "And the Allergy-Smart bar promises free from the top nine. That claim is now false.",
+  "start": 13.45,
+  "end": 19.78,
+  "position": "top"
+ },
+ {
+  "clip": "06",
+  "id": "06a",
+  "step": "STEP 6 / 11 · PROTECTIVE HOLDS",
+  "text": "Protective holds are placed automatically, then re-read and VERIFIED.",
+  "action": "Actions tab: holds VERIFIED",
+  "voice": "Holds go on automatically, and LabelLock reads them back to prove they took.",
+  "start": 0.73,
+  "end": 6.48,
+  "position": "bottom"
+ },
+ {
+  "clip": "06",
+  "id": "06b",
+  "text": "The state lives in the warehouse system itself: here FG-1041 is HELD.",
+  "action": "Simulated WMS API response, labelled",
+  "voice": "Not just in our database: the warehouse system itself shows the stock on hold.",
+  "start": 6.48,
+  "end": 12.24,
+  "position": "bottom",
+  "pin": "bottom"
+ },
+ {
+  "clip": "06",
+  "id": "06c",
+  "text": "Pulling FG-1043 off shipment L-552 is restricted: it waits for a QA manager.",
+  "action": "REMOVE_FROM_SHIPMENT PENDING_APPROVAL",
+  "voice": "Taking product off a customer shipment is a bigger step, so it waits for a manager.",
+  "start": 12.24,
+  "end": 18.58,
+  "position": "top"
+ },
+ {
+  "clip": "07",
+  "id": "07a",
+  "step": "STEP 7 / 11 · PERMISSIONS",
+  "text": "A QA specialist gets no approve button.",
+  "action": "Specialist's Approvals page without approve controls",
+  "voice": "Permissions are real. A specialist can't approve...",
+  "start": 0.71,
+  "end": 4.17,
+  "position": "bottom"
+ },
+ {
+  "clip": "07",
+  "id": "07b",
+  "text": "Called directly, the server refuses too: 403 Forbidden.",
+  "action": "Direct API call page with the real 403 response",
+  "voice": "...and if she called the API directly, the server says no.",
+  "start": 4.17,
+  "end": 8.76,
+  "position": "bottom",
+  "pin": "bottom"
+ },
+ {
+  "clip": "07",
+  "id": "07c",
+  "text": "Releasing held stock without an approved disposition is refused by policy.",
+  "action": "Shipping supervisor's release request refused: POLICY_VIOLATION",
+  "voice": "Nobody can release held stock until QA records what happens to it.",
+  "start": 8.76,
+  "end": 25.55,
+  "position": "bottom"
+ },
+ {
+  "clip": "08",
+  "id": "08a",
+  "step": "STEP 8 / 11 · HUMAN APPROVAL",
+  "text": "The QA manager reviews the request and approves it with a comment.",
+  "action": "Manager approves the removal on Approvals",
+  "voice": "The QA manager reviews and approves.",
+  "start": 0.7,
+  "end": 10.39,
+  "position": "bottom"
+ },
+ {
+  "clip": "08",
+  "id": "08b",
+  "text": "LabelLock removes FG-1043, re-reads shipment L-552, and marks it VERIFIED.",
+  "action": "Removal VERIFIED; case CONTAINED",
+  "voice": "LabelLock pulls the batch, re-reads the shipment to confirm it's gone, and the case is contained.",
+  "start": 10.39,
+  "end": 29.54,
+  "position": "top"
+ },
+ {
+  "clip": "09",
+  "id": "09a",
+  "step": "STEP 9 / 11 · SILENT FAILURE",
+  "text": "Test: we inject a fault so the warehouse silently fails to apply holds.",
+  "action": "Admin switches on the WMS fault in Settings",
+  "voice": "Now a test. We make the warehouse lie: it will say holds worked when they didn't.",
+  "start": 0.71,
+  "end": 7.04,
+  "position": "bottom"
+ },
+ {
+  "clip": "09",
+  "id": "09b",
+  "text": "Same notice, same run.",
+  "action": "QA specialist runs the case",
+  "voice": "Same notice. Same run.",
+  "start": 7.04,
+  "end": 21.15,
+  "position": "bottom"
+ },
+ {
+  "clip": "09",
+  "id": "09c",
+  "text": "Warehouse said OK. LabelLock re-checked: still available. One safe retry, then VERIFY_FAILED.",
+  "action": "Holds VERIFY_FAILED; stock AVAILABLE",
+  "voice": "The warehouse said OK. LabelLock checked anyway, found the stock still available, retried once, and flagged the failure.",
+  "start": 21.15,
+  "end": 33.61,
+  "position": "top"
+ },
+ {
+  "clip": "09",
+  "id": "09d",
+  "text": "The case is escalated to a person. It is never marked contained.",
+  "action": "Case ESCALATED",
+  "voice": "So the case goes to a person. It is never marked contained.",
+  "start": 33.61,
+  "end": 38.95,
+  "position": "bottom"
+ },
+ {
+  "clip": "10",
+  "id": "10a",
+  "step": "STEP 10 / 11 · AUDIT TRAIL",
+  "text": "Every step is on the record, with timestamps.",
+  "action": "Timeline of the contained case",
+  "voice": "Every step is on the record.",
+  "start": 2.48,
+  "end": 6.24,
+  "position": "top"
+ },
+ {
+  "clip": "10",
+  "id": "10b",
+  "text": "Rules fired, system calls, approvals and every verification attempt.",
+  "action": "Timeline filters: decisions, actions, system calls",
+  "voice": "Which rule fired, every system call, who approved, and each verification.",
+  "start": 6.24,
+  "end": 15.82,
+  "position": "top"
+ },
+ {
+  "clip": "11",
+  "id": "11a",
+  "step": "STEP 11 / 11 · REPORT & ROI",
+  "text": "The case report: each batch's outcome and the time to containment.",
+  "action": "Case report",
+  "voice": "The report shows what happened to every batch.",
+  "start": 0.74,
+  "end": 6.75,
+  "position": "bottom"
+ },
+ {
+  "clip": "11",
+  "id": "11b",
+  "text": "ROI: measured results from 20 test scenarios, kept apart from editable assumptions.",
+  "action": "ROI dashboard: Measured section, then Assumptions",
+  "voice": "And the ROI page keeps measured results apart from assumptions you can edit.",
+  "start": 6.75,
+  "end": 13.68,
+  "position": "top"
+ },
+ {
+  "clip": "11",
+  "id": "11c",
+  "text": "Assumptions are inputs, not results. Estimates appear only once manual runs are timed.",
+  "action": "Assumptions and estimate method",
+  "voice": "Assumptions stay inputs. No savings are claimed until real manual runs are timed.",
+  "start": 13.68,
+  "end": 20.85,
+  "position": "bottom"
+ }
+]
