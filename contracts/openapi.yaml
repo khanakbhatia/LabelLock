@@ -104,6 +104,58 @@ paths:
         "401": {$ref: "#/components/responses/Unauthenticated"}
         "403": {$ref: "#/components/responses/Forbidden"}
 
+  /notices/ingest-email:
+    post:
+      summary: Ingest a Gmail message as a notice (P1, Chrome extension)
+      description: |
+        Roles: qa_specialist, qa_manager.
+        Creates the notice and case through the same path as POST /notices. Idempotent on
+        gmail_message_id: a repeat returns 200 with duplicate=true and the existing case.
+        Attachments must be PDFs (declared application/pdf and starting with %PDF-), at most
+        5 MB each after base64 decoding, at most 10 per message; otherwise 422 naming the file.
+        An unknown sender still opens a case, flagged SUPPLIER_UNVERIFIED.
+        Body and attachments are stored as untrusted data and never change routing, roles or policy.
+      x-roles: [qa_specialist, qa_manager]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/IngestEmailRequest"}
+      responses:
+        "201":
+          description: Notice and case created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/IngestEmailResponse"}
+        "200":
+          description: Message already ingested; returns the existing case (duplicate=true)
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/IngestEmailResponse"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "422": {$ref: "#/components/responses/ValidationError"}
+
+  /cases/by-message/{gmail_message_id}:
+    get:
+      summary: Case for a Gmail message, if any (P1, Chrome extension)
+      description: "Roles: qa_specialist, qa_manager, shipping_supervisor. 404 NOT_FOUND when the message has no case."
+      x-roles: [qa_specialist, qa_manager, shipping_supervisor]
+      parameters:
+        - name: gmail_message_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: Case summary
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/CaseSummary"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
   /notices/{id}:
     get:
       summary: Full notice
@@ -487,6 +539,9 @@ components:
     ErrorCode:
       type: string
       enum: [UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, VALIDATION_ERROR, CONFLICT, POLICY_VIOLATION, UPSTREAM_FAILED, NOT_IMPLEMENTED, INTERNAL_ERROR]
+    UncertaintyFlag:
+      type: string
+      enum: [SUPPLIER_UNVERIFIED]
     DispositionValue:
       type: string
       enum: [RELABEL, REWORK, DESTROY, RETURN_TO_SUPPLIER, RELEASE_AS_IS]
@@ -561,6 +616,38 @@ components:
         notice_id: {type: string}
         case_id: {type: string}
         case_status: {$ref: "#/components/schemas/CaseStatus"}
+    IngestAttachment:
+      type: object
+      additionalProperties: false
+      required: [filename, mime_type, content_base64]
+      properties:
+        filename: {type: string, minLength: 1}
+        mime_type: {type: string, const: application/pdf}
+        content_base64: {type: string, contentEncoding: base64, description: "Standard base64 (not base64url); max 5 MB decoded."}
+    IngestEmailRequest:
+      type: object
+      additionalProperties: false
+      required: [gmail_message_id, thread_id, from, subject, body_text, received_at, attachments]
+      properties:
+        gmail_message_id: {type: string, minLength: 1}
+        thread_id: {type: string, minLength: 1}
+        from: {type: string, minLength: 1, description: "Raw From header, e.g. \"Valley QA <qa@valley-ingredients.example>\""}
+        subject: {type: string}
+        body_text: {type: string, description: "Untrusted; stored verbatim."}
+        received_at: {$ref: "#/components/schemas/Timestamp"}
+        attachments:
+          type: array
+          maxItems: 10
+          items: {$ref: "#/components/schemas/IngestAttachment"}
+    IngestEmailResponse:
+      type: object
+      additionalProperties: false
+      required: [notice_id, case_id, case_status, duplicate]
+      properties:
+        notice_id: {type: string}
+        case_id: {type: string}
+        case_status: {$ref: "#/components/schemas/CaseStatus"}
+        duplicate: {type: boolean}
     NoticeSummary:
       type: object
       additionalProperties: false
@@ -614,17 +701,21 @@ components:
     CaseSummary:
       type: object
       additionalProperties: false
-      required: [id, notice_id, status, supplier, subject, opened_at, contained_at, duplicate_of, pending_approvals]
+      required: [id, notice_id, status, supplier, subject, opened_at, contained_at, duplicate_of, pending_approvals, uncertainty_flags]
       properties:
         id: {type: string}
         notice_id: {type: string}
         status: {$ref: "#/components/schemas/CaseStatus"}
-        supplier: {type: string}
+        supplier: {type: string, description: "Supplier name, or the sender address when unverified"}
         subject: {type: string}
         opened_at: {$ref: "#/components/schemas/Timestamp"}
         contained_at: {$ref: "#/components/schemas/NullableTimestamp"}
         duplicate_of: {type: [string, "null"]}
         pending_approvals: {type: integer, minimum: 0}
+        uncertainty_flags:
+          type: array
+          description: "Case-level flags, e.g. SUPPLIER_UNVERIFIED for an unknown sender."
+          items: {$ref: "#/components/schemas/UncertaintyFlag"}
     NoticeRef:
       type: object
       additionalProperties: false
@@ -679,7 +770,7 @@ components:
           items: {$ref: "#/components/schemas/AllergenAdded"}
         uncertainty_flags:
           type: array
-          items: {type: string}
+          items: {$ref: "#/components/schemas/UncertaintyFlag"}
         model: {type: string}
         prompt_version: {type: string}
     StockLocation:
@@ -746,7 +837,7 @@ components:
           items: {type: string}
         uncertainty_flags:
           type: array
-          items: {type: string}
+          items: {$ref: "#/components/schemas/UncertaintyFlag"}
         rationale: {type: string}
     Action:
       type: object
@@ -783,6 +874,10 @@ components:
         duplicate_of: {type: [string, "null"]}
         opened_at: {$ref: "#/components/schemas/Timestamp"}
         contained_at: {$ref: "#/components/schemas/NullableTimestamp"}
+        uncertainty_flags:
+          type: array
+          description: "Case-level flags (same as CaseSummary)."
+          items: {$ref: "#/components/schemas/UncertaintyFlag"}
         notice: {$ref: "#/components/schemas/NoticeRef"}
         extraction:
           oneOf:

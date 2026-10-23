@@ -20,8 +20,10 @@ def assert_matches(schema_name: str, data) -> None:
 
 @pytest.fixture(scope="session")
 def settings(tmp_path_factory):
-    db = tmp_path_factory.mktemp("db") / "test.db"
-    return Settings(database_url=f"sqlite:///{db.as_posix()}", auth_secret="test-secret", cors_origin="http://localhost:5173")
+    tmp = tmp_path_factory.mktemp("db")
+    return Settings(database_url=f"sqlite:///{(tmp / 'test.db').as_posix()}", auth_secret="test-secret",
+                    cors_origin="http://localhost:5173", extension_origin="chrome-extension://labellocktestid",
+                    upload_dir=tmp / "uploads")
 
 
 @pytest.fixture(scope="session")

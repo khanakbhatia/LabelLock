@@ -1,0 +1,11 @@
+{
+  "gmail_message_id": "18c2f4a9b7e01d3a",
+  "thread_id": "18c2f4a9b7e01d3a",
+  "from": "Valley Ingredients QA <qa@valley-ingredients.example>",
+  "subject": "Lecithin source change from lot VL-2291",
+  "body_text": "Dear Northfield QA,\n\nPlease note that Lecithin (RM-114) will be supplied as soy lecithin from lot VL-2291 onward. Updated specification attached.\n\nValley Ingredients Quality",
+  "received_at": "2026-10-23T09:00:00Z",
+  "attachments": [
+    {"filename": "RM-114_spec_rev4.pdf", "mime_type": "application/pdf", "content_base64": "JVBERi0xLjQKJSBzYW1wbGUKMSAwIG9iaiA8PCAvVHlwZSAvQ2F0YWxvZyA+PiBlbmRvYmoKdHJhaWxlciA8PCAvUm9vdCAxIDAgUiA+PgolJUVPRgo="}
+  ]
+}

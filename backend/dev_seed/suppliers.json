@@ -1,0 +1,4 @@
+[
+  {"id": "s_valley", "name": "Valley Ingredients", "senders": ["valley-ingredients.example"]},
+  {"id": "s_prairie", "name": "Prairie Oat Mills", "senders": ["prairieoats.example"]}
+]
