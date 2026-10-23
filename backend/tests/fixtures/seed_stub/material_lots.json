@@ -1,0 +1,8 @@
+[
+  {"lot_id": "VL-2290", "material_id": "RM-114", "received_at": "2026-09-02T08:00:00Z"},
+  {"lot_id": "VL-2291", "material_id": "RM-114", "received_at": "2026-10-01T08:00:00Z"},
+  {"lot_id": "PO-7710", "material_id": "RM-201", "received_at": "2026-09-28T08:00:00Z"},
+  {"lot_id": "VH-0412", "material_id": "RM-305", "received_at": "2026-09-20T08:00:00Z"},
+  {"lot_id": "VS-1180", "material_id": "RM-410", "received_at": "2026-09-25T08:00:00Z"},
+  {"lot_id": "VM-0091", "material_id": "RM-502", "received_at": "2026-09-22T08:00:00Z"}
+]

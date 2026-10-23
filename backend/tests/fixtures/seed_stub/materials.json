@@ -1,0 +1,7 @@
+[
+  {"material_id": "RM-114", "name": "Lecithin", "supplier_id": "s_valley"},
+  {"material_id": "RM-201", "name": "Rolled oats", "supplier_id": "s_prairie"},
+  {"material_id": "RM-305", "name": "Honey", "supplier_id": "s_valley"},
+  {"material_id": "RM-410", "name": "Sunflower seeds", "supplier_id": "s_valley"},
+  {"material_id": "RM-502", "name": "Skim milk powder", "supplier_id": "s_valley"}
+]

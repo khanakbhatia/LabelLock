@@ -23,12 +23,15 @@ def settings(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("db")
     return Settings(database_url=f"sqlite:///{(tmp / 'test.db').as_posix()}", auth_secret="test-secret",
                     cors_origin="http://localhost:5173", extension_origin="chrome-extension://labellocktestid",
-                    upload_dir=tmp / "uploads")
+                    upload_dir=tmp / "uploads", sim_database_url=f"sqlite:///{(tmp / 'sim.db').as_posix()}",
+                    sim_api_key="test-sim-key", seed_dir=tmp / "no-seed-here", demo_mode=True)
 
 
 @pytest.fixture(scope="session")
 def app(settings):
-    return create_app(settings)
+    app = create_app(settings)
+    app.state.sim_http = TestClient(app)  # adapters call /sim/* in-process instead of over a socket
+    return app
 
 
 @pytest.fixture(scope="session")

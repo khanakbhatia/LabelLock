@@ -5,5 +5,5 @@
   "action_type": ["PLACE_HOLD", "BLOCK_RECEIPT", "REMOVE_FROM_SHIPMENT", "RELEASE_HOLD", "CREATE_RELABEL_TICKET", "SEND_RETAILER_NOTICE", "SEND_SUPPLIER_QUERY"],
   "action_status": ["PROPOSED", "PENDING_APPROVAL", "APPROVED", "REJECTED", "EXECUTING", "EXECUTED", "VERIFIED", "VERIFY_FAILED", "ESCALATED"],
   "role": ["supplier", "qa_specialist", "qa_manager", "shipping_supervisor", "admin", "agent"],
-  "uncertainty_flag": ["SUPPLIER_UNVERIFIED"]
+  "uncertainty_flag": ["SUPPLIER_UNVERIFIED", "LLM_UNCERTAIN", "EVIDENCE_MISMATCH", "CRITICAL_FIELD_UNRESOLVED"]
 }

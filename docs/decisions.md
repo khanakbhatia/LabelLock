@@ -31,3 +31,32 @@ Backend decisions:
 - Supplier Portal `POST /notices` was implemented now so both sources share `create_notice_case`.
 - Stub supplier list in `backend/dev_seed/suppliers.json` until the loader for `/data/seed` lands.
 - `users.supplier_id` column added. SQLite tables are created, not migrated: delete an old `labellock.db`.
+
+## 2026-10-23 — M1 agent: sim, seed, adapters, rules, mock extraction, orchestrator (Anvi)
+
+Contract changes:
+- `uncertainty_flag` gains `LLM_UNCERTAIN`, `EVIDENCE_MISMATCH`, `CRITICAL_FIELD_UNRESOLVED`.
+- No shape changes to existing schemas. New values inside free-text fields that the UI should know:
+  - `CaseReport.batches[].final_state`: `NO_ACTION`, `HELD`, `HELD_PENDING_REMOVAL`, `REMOVED_FROM_SHIPMENT`,
+    `VERIFY_FAILED`, `ESCALATED`, `IN_PROGRESS`.
+  - `AuditEvent.kind`: `NOTICE_RECEIVED`, `RUN_STARTED`, `STEP_STARTED`, `STEP_COMPLETED`, `EXTRACTION_COMPLETED`,
+    `RULE_FIRED`, `ADAPTER_CALL`, `TRACE_COMPLETED`, `ACTION_CREATED`, `ACTION_STATUS_CHANGED`, `APPROVAL_REQUESTED`,
+    `VERIFICATION`, `VERIFY_MISMATCH`, `ESCALATED`, `POLICY_VIOLATION`, `STATUS_CHANGED`, `REPORT_GENERATED`, `RUN_FAILED`.
+  - `AuditEvent.id` is `e_000123` (zero-padded sequence).
+
+Decisions:
+- The sim runs in the same FastAPI process under `/sim/*` with its own database (`SIM_DATABASE_URL`) and
+  `X-Sim-Key`; adapters reach it over HTTP at `SIM_BASE_URL` (tests use an in-process TestClient).
+- A hold is per (batch, location). Fault `wms_silent_hold_failure` skips the first location (by name) of each
+  batch while still answering 201. A repeated hold with the same Idempotency-Key re-asserts the hold.
+- A failed verification leaves the action at `VERIFY_FAILED` (an `ESCALATED` audit event records the escalation)
+  and the case `ESCALATED`; this keeps the failed action visible. A later run re-verifies it.
+- Trace follows only the named lot (the ERP has no "lots of a material" endpoint, so "from lot X onward" does
+  not include later lots yet).
+- `allergens_added` is computed by `rules.allergens_in(new_ingredient)`, never by the LLM. The LLM output can only
+  lower confidence (`LLM_UNCERTAIN` turns an affected batch into `UNCERTAIN_ESCALATE`, never the reverse).
+- Evidence check normalises whitespace only; a FOUND field whose quote is not in the email or cited PDF page
+  becomes AMBIGUOUS. A notice with no recorded mock extraction escalates with every field MISSING.
+- `SUPPLIER_UNVERIFIED` cases are extracted, traced and decided, then escalate before any write.
+- Approvals table and the approve/reject flow are M2; the adapter gate already refuses non-APPROVED actions.
+- New tables require deleting an old `labellock.db` (create_all does not migrate).

@@ -1,0 +1,2 @@
+backend/tests/fixtures/** -text
+backend/agent/fixtures/** -text
