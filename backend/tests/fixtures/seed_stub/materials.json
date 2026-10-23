@@ -3,5 +3,10 @@
   {"material_id": "RM-201", "name": "Rolled oats", "supplier_id": "s_prairie"},
   {"material_id": "RM-305", "name": "Honey", "supplier_id": "s_valley"},
   {"material_id": "RM-410", "name": "Sunflower seeds", "supplier_id": "s_valley"},
-  {"material_id": "RM-502", "name": "Skim milk powder", "supplier_id": "s_valley"}
+  {"material_id": "RM-502", "name": "Skim milk powder", "supplier_id": "s_valley"},
+  {"material_id": "RM-620", "name": "Seed blend", "supplier_id": "s_valley"},
+  {"material_id": "RM-640", "name": "Protein crisp", "supplier_id": "s_valley"},
+  {"material_id": "RM-660", "name": "Savory glaze", "supplier_id": "s_valley"},
+  {"material_id": "RM-680", "name": "Fruit binder", "supplier_id": "s_valley"},
+  {"material_id": "RM-700", "name": "Crumb coating", "supplier_id": "s_prairie"}
 ]

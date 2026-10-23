@@ -1,0 +1,43 @@
+{
+  "_notice": "Recorded from claude-opus-5-5",
+  "fields": {
+    "material": {
+      "value": "Protein crisp (RM-640)",
+      "status": "FOUND",
+      "confidence": 0.97,
+      "evidence": {
+        "source": "email",
+        "page": null,
+        "quote": "Protein crisp (RM-640)"
+      }
+    },
+    "new_ingredient": {
+      "value": "whey protein",
+      "status": "FOUND",
+      "confidence": 0.93,
+      "evidence": {
+        "source": "email",
+        "page": null,
+        "quote": "made with whey protein instead of pea protein"
+      }
+    },
+    "effective_lot": {
+      "value": "PC-4410",
+      "status": "FOUND",
+      "confidence": 0.97,
+      "evidence": {
+        "source": "email",
+        "page": null,
+        "quote": "Starting with lot PC-4410"
+      }
+    },
+    "may_contain": {
+      "value": null,
+      "status": "MISSING",
+      "confidence": null,
+      "evidence": null
+    }
+  },
+  "uncertainty_flags": [],
+  "model": "claude-opus-5-5"
+}

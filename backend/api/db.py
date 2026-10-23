@@ -144,6 +144,44 @@ class Action(Base):
     created_at: Mapped[str] = mapped_column(String)
 
 
+class Approval(Base):
+    __tablename__ = "approvals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    action_id: Mapped[str] = mapped_column(ForeignKey("actions.id"), index=True)
+    decided_by: Mapped[str] = mapped_column(String)
+    decision: Mapped[str] = mapped_column(String)  # APPROVED | REJECTED
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_at: Mapped[str] = mapped_column(String)
+
+
+class Disposition(Base):
+    __tablename__ = "dispositions"
+
+    seq: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)  # latest wins; timestamps tie
+    id: Mapped[str] = mapped_column(String, unique=True)
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id"), index=True)
+    batch_id: Mapped[str] = mapped_column(String)
+    disposition: Mapped[str] = mapped_column(String)
+    evidence: Mapped[str] = mapped_column(Text)
+    recorded_by: Mapped[str] = mapped_column(String)
+    recorded_at: Mapped[str] = mapped_column(String)
+
+
+class Benchmark(Base):
+    """A timed run of one scenario, by a person (manual) or the agent."""
+    __tablename__ = "benchmarks"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    scenario_id: Mapped[str] = mapped_column(String, index=True)
+    mode: Mapped[str] = mapped_column(String)  # manual | agent
+    seconds: Mapped[float] = mapped_column(Float)
+    batches_found: Mapped[int] = mapped_column(Integer)
+    false_holds: Mapped[int] = mapped_column(Integer)
+    operator: Mapped[str] = mapped_column(String)
+    created_at: Mapped[str] = mapped_column(String)
+
+
 class Verification(Base):
     __tablename__ = "verifications"
 

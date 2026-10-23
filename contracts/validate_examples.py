@@ -29,6 +29,8 @@ EXAMPLES = {
     "ingest_email_response.json": "IngestEmailResponse",
     "ingest_email_duplicate.json": "IngestEmailResponse",
     "case_by_message.json": "CaseSummary",
+    "benchmark.json": "Benchmark",
+    "roi_summary.json": "RoiSummary",
 }
 
 # enums.json key -> openapi schema name

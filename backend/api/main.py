@@ -10,6 +10,7 @@ from api import errors
 from api.auth import hash_password
 from api.cases import router as cases_router
 from api.db import Supplier, SupplierSender, User, make_sessionmaker
+from api.metrics import router as metrics_router
 from api.routes import router
 from api.settings import Settings
 from sim.db import Batch as SimBatch, make_sim_sessionmaker
@@ -62,5 +63,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.include_router(router)
     app.include_router(cases_router)
+    app.include_router(metrics_router)
     app.include_router(sim_router)
     return app

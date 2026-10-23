@@ -26,8 +26,9 @@ from rules import AFFECTED, HOLDABLE, SHIPPED_STATUSES, allergens_in, decide_bat
 log = logging.getLogger("labellock.agent")
 
 AGENT = "labellock-agent"
-STEPS = ("extract", "trace", "decide", "act", "verify", "report")
-ALWAYS_RERUN = {"verify", "report"}  # read-only checks plus idempotent retries
+STEPS = ("extract", "trace", "decide", "act", "execute", "verify", "report")
+# execute runs whatever a QA manager approved since the last run; verify/report are read-only plus idempotent retries
+ALWAYS_RERUN = {"execute", "verify", "report"}
 KNOWN_LLM_FLAGS = {"LLM_UNCERTAIN"}
 
 
@@ -82,7 +83,7 @@ class CaseRun:
 
     # ---- run
 
-    def execute(self, run_id: str, started_by: str) -> None:
+    def run_steps(self, run_id: str, started_by: str) -> None:
         case = self.case
         self.audit("RUN_STARTED", {"run_id": run_id, "resuming": dict(case.steps or {})}, actor=started_by)
         self.t0 = time.monotonic()  # stored timestamps are whole seconds; elapsed needs better
@@ -106,7 +107,7 @@ class CaseRun:
         notice = self.db.get(Notice, self.case.notice_id)
         paths = self.db.scalars(select(NoticeAttachment.path).where(NoticeAttachment.notice_id == notice.id).order_by(NoticeAttachment.id))
         pages = pdf_pages(list(paths))
-        llm = get_llm(self.settings.llm_mode)
+        llm = get_llm(self.settings.llm_mode, self.settings.llm_model)
         raw = llm.extract(content_hash=notice.content_hash, email_text=notice.body, pages=pages)
         fields, downgraded = check_evidence(raw["fields"], notice.body, pages)
         # The LLM may only add flags we know; anything else becomes a generic uncertainty flag.
@@ -119,11 +120,12 @@ class CaseRun:
         new_ingredient = fields.get("new_ingredient", {})
         added = allergens_in(new_ingredient.get("value")) if new_ingredient.get("status") == "FOUND" else []
 
-        self.db.merge(Extraction(case_id=self.case.id, fields=fields, uncertainty_flags=flags, model=llm.model,
+        model = raw.get("model", llm.model)  # a refusal fallback may have served the request
+        self.db.merge(Extraction(case_id=self.case.id, fields=fields, uncertainty_flags=flags, model=model,
                                  prompt_version=PROMPT_VERSION,
                                  allergens_added=[{"allergen": a["allergen"], "rule_id": a["rule_id"]} for a in added]))
         statuses = Counter(f.get("status") for f in fields.values())
-        self.audit("EXTRACTION_COMPLETED", {"model": llm.model, "prompt_version": PROMPT_VERSION, "found": statuses["FOUND"],
+        self.audit("EXTRACTION_COMPLETED", {"model": model, "prompt_version": PROMPT_VERSION, "found": statuses["FOUND"],
                                             "missing": statuses["MISSING"], "ambiguous": statuses["AMBIGUOUS"],
                                             "evidence_downgraded": downgraded, "uncertainty_flags": flags})
         for a in added:
@@ -219,6 +221,26 @@ class CaseRun:
         action.result = {"hold_id": hold["hold_id"]}
         self.set_action_status(action, "EXECUTED", hold_id=hold["hold_id"])
 
+    def execute(self) -> bool:
+        """Carry out APPROVED restricted actions. The adapter re-checks the approval in the app DB."""
+        for action in self.actions("REMOVE_FROM_SHIPMENT", "RELEASE_HOLD"):
+            if action.status != "APPROVED":
+                continue
+            # Call while still APPROVED (the gate checks that); a crash before EXECUTED is recorded just
+            # re-runs this call next time, and the sim's Idempotency-Key makes the repeat a no-op.
+            try:
+                if action.type == "REMOVE_FROM_SHIPMENT":
+                    action.result = self.wms.remove_line(action.id)
+                else:
+                    action.result = {"released": [h["hold_id"] for h in self.wms.release_hold(action.id)]}
+            except ApiError as e:
+                action.result = {"error": e.code, "message": e.message}
+                self.set_action_status(action, "ESCALATED", reason=e.code)
+                continue
+            self.set_action_status(action, "EXECUTED")
+            self.db.commit()
+        return True
+
     def verify(self) -> bool:
         tr = self.db.get(TraceResult, self.case.id)
         graph = {**tr.graph, "batches": [dict(b) for b in tr.graph["batches"]]}
@@ -250,6 +272,20 @@ class CaseRun:
             passed = shipment is not None and action.target["batch_id"] not in lines
             self.record_verification(action, {"batch_id_absent": action.target["batch_id"]}, {"lines": lines}, passed)
             self.set_action_status(action, "VERIFIED" if passed else "VERIFY_FAILED")
+            if not passed:
+                self.audit("ESCALATED", {"reason": "VERIFY_FAILED", "action_id": action.id, "target": action.target})
+        for action in self.actions("RELEASE_HOLD"):
+            if action.status != "EXECUTED":
+                continue
+            wanted = set(action.target["hold_ids"].split(","))
+            observed = {h["hold_id"]: h["status"] for h in self.wms.holds(action.target["batch_id"]) if h["hold_id"] in wanted}
+            passed = observed == {h: "RELEASED" for h in wanted}
+            self.record_verification(action, {"released": sorted(wanted)}, {"holds": observed}, passed)
+            self.set_action_status(action, "VERIFIED" if passed else "VERIFY_FAILED")
+            for b in graph["batches"]:
+                if b["batch_id"] == action.target["batch_id"]:
+                    b["locations"] = [{"location": r["location"], "qty": r["qty"], "status": r["status"]}
+                                      for r in self.wms.inventory(b["batch_id"])]
         tr.graph = graph
         self.db.commit()
         return True
@@ -290,8 +326,11 @@ class CaseRun:
         actions = self.actions()
         if any(d.decision not in HOLDABLE for d in affected):
             return "ESCALATED", "batch needs human decision"
-        if any(a.status in ("VERIFY_FAILED", "ESCALATED", "REJECTED") for a in actions):
-            return "ESCALATED", "action failed, unverified or rejected"
+        if any(a.status in ("VERIFY_FAILED", "ESCALATED") for a in actions):
+            return "ESCALATED", "action failed or unverified"
+        if any(a.status == "REJECTED" and a.type == "REMOVE_FROM_SHIPMENT" for a in actions):
+            return "ESCALATED", "shipment removal rejected; affected stock may ship"
+        actions = [a for a in actions if a.status != "REJECTED"]  # a rejected release just leaves the hold on
         if any(a.status in ("PENDING_APPROVAL", "APPROVED", "EXECUTING", "EXECUTED", "PROPOSED") for a in actions):
             waiting = any(a.status == "PENDING_APPROVAL" for a in actions)
             return ("AWAITING_APPROVAL", "restricted actions pending") if waiting else ("ESCALATED", "actions not verified")
@@ -306,7 +345,7 @@ def run_case(sm: sessionmaker[Session], http_client: httpx.Client, settings: Set
     with sm() as db:
         case = db.get(Case, case_id)
         try:
-            CaseRun(db, case, http_client, settings).execute(run_id, started_by)
+            CaseRun(db, case, http_client, settings).run_steps(run_id, started_by)
         except Exception as e:  # never leave a case silently half-done
             log.exception("run %s for case %s failed", run_id, case_id)
             db.rollback()

@@ -11,9 +11,10 @@ import json
 from typing import Callable, TypedDict
 
 import httpx
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from api.db import Action
+from api.db import Action, Approval, User
 from api.errors import ApiError
 from audit import append_event
 
@@ -160,6 +161,9 @@ class ApprovalGate:
             problem = f"action {action_id} is {action.type}, not {action_type}"
         elif action.status != "APPROVED":
             problem = f"action {action_id} is {action.status}, not APPROVED"
+        elif not self.db.scalar(select(Approval.id).join(User, User.username == Approval.decided_by).where(
+                Approval.action_id == action_id, Approval.decision == "APPROVED", User.role == "qa_manager")):
+            problem = f"action {action_id} has no recorded approval by a qa_manager"
         if problem:
             details = {"action_id": action_id, "action_type": action_type, "reason": problem}
             append_event(self.db, action.case_id if action else self.case_id, self.actor, "POLICY_VIOLATION", details)
@@ -193,10 +197,11 @@ class WmsClient:
 
     # -- restricted writes: parameters come from the approved action, never from the caller
 
-    def release_hold(self, action_id: str) -> HoldRow:
+    def release_hold(self, action_id: str) -> list[HoldRow]:
+        """Release every hold listed in the approved action's target (hold_ids, comma-separated)."""
         action = self.gate.require_approved(action_id, "RELEASE_HOLD")
-        return self.http.request("wms", "POST", f"/sim/wms/holds/{action.target['hold_id']}/release",
-                                 idem=action.idempotency_key)
+        return [self.http.request("wms", "POST", f"/sim/wms/holds/{hold_id}/release", idem=f"{action.idempotency_key}:{hold_id}")
+                for hold_id in action.target["hold_ids"].split(",")]
 
     def remove_line(self, action_id: str) -> dict:
         action = self.gate.require_approved(action_id, "REMOVE_FROM_SHIPMENT")

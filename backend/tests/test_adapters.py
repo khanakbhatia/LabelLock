@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from adapters.sim import ApprovalGate, ErpClient, SimHttp, WmsClient, idempotency_key
-from api.db import Action, AuditEvent, Case, Notice, new_id, now_iso
+from api.db import Action, Approval, AuditEvent, Case, Notice, new_id, now_iso
 from api.errors import ApiError
 from sim.db import ShipmentLine
 from sim.seed import reset_sim
@@ -116,10 +116,25 @@ def test_wrong_type_or_unknown_action_is_policy_violation(app, case_with_removal
     assert sim_line(app) is not None
 
 
+@pytest.mark.parametrize("decided_by", [None, "priya.qa"])
+def test_approved_status_without_a_qa_manager_approval_is_policy_violation(app, case_with_removal, decided_by):
+    case_id, action_id = case_with_removal
+    with app.state.sessionmaker() as db:
+        db.get(Action, action_id).status = "APPROVED"  # status flipped, but no qa_manager decision on record
+        if decided_by:
+            db.add(Approval(action_id=action_id, decided_by=decided_by, decision="APPROVED", decided_at=now_iso()))
+        db.commit()
+        with pytest.raises(ApiError) as e:
+            make_wms(app, db, case_id).remove_line(action_id)
+        assert "no recorded approval" in e.value.message
+    assert sim_line(app) is not None
+
+
 def test_approved_removal_reaches_the_sim(app, case_with_removal):
     case_id, action_id = case_with_removal
     with app.state.sessionmaker() as db:
         db.get(Action, action_id).status = "APPROVED"
+        db.add(Approval(action_id=action_id, decided_by="daniel.qam", decision="APPROVED", decided_at=now_iso()))
         db.commit()
         result = make_wms(app, db, case_id).remove_line(action_id)
     assert result["qty"] == 240

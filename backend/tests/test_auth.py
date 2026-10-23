@@ -91,9 +91,9 @@ def test_only_qa_manager_passes_approve_role_check(client, token_for, username):
     assert_error(r, 403, "FORBIDDEN")
 
 
-def test_qa_manager_reaches_approve_placeholder(client, token_for):
+def test_qa_manager_passes_role_check_on_approve(client, token_for):
     r = client.post("/api/actions/a_012/approve", json={"comment": "ok"}, headers=bearer(token_for("daniel.qam")))
-    err = assert_error(r, 501, "NOT_IMPLEMENTED")
+    err = assert_error(r, 404, "NOT_FOUND")  # past the role check; the action just doesn't exist
     assert err["details"] == {"action_id": "a_012"}
 
 

@@ -1,0 +1,15 @@
+{
+  "measured": {
+    "manual_runs": 3,
+    "agent_runs": 16,
+    "manual_median_seconds": 2400,
+    "agent_median_seconds": 4.531,
+    "eval": {"scenarios": 20, "passed": 16, "pass_rate": 0.8, "decision_accuracy": 0.8444, "batch_recall": 0.9091,
+             "false_holds": 0, "escalation_accuracy": 0.5, "known_gaps": 4, "agent_median_seconds": 4.531}
+  },
+  "assumptions": [
+    {"key": "qa_hourly_cost", "label": "Loaded cost of a QA specialist hour", "value": 55, "unit": "USD/hour"},
+    {"key": "change_notices_per_month", "label": "Supplier change notices handled per month", "value": 30, "unit": "notices/month"},
+    {"key": "allergen_recall_cost", "label": "Direct cost of one undeclared-allergen recall", "value": 10000000, "unit": "USD"}
+  ]
+}

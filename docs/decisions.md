@@ -60,3 +60,64 @@ Decisions:
 - `SUPPLIER_UNVERIFIED` cases are extracted, traced and decided, then escalate before any write.
 - Approvals table and the approve/reject flow are M2; the adapter gate already refuses non-APPROVED actions.
 - New tables require deleting an old `labellock.db` (create_all does not migrate).
+
+## 2026-10-23 — M2 backend: notice reads, approvals, execution, dispositions, release (Anvi)
+
+No contract shape changes; every new response validates against `openapi.yaml`. Behaviour the UI relies on:
+- `GET /inbox`, `GET /notices?mine=true` (only `mine=true`; supplier sees notices whose supplier is theirs),
+  `GET /notices/{id}` and `/attachment` (a supplier gets 404, not 403, for other suppliers' notices; the PDF is
+  served with `X-Content-Type-Options: nosniff` as a download).
+- `GET /approvals?status=` lists actions with `requires_approval`, newest first.
+- `POST /actions/{id}/approve` records the decision and returns the action as `APPROVED`; the agent then runs in
+  the background: a new `execute` step (between act and verify, re-run every time) calls the sim through the
+  adapter gate, and verify re-reads it (shipment line gone; holds RELEASED). If a run is already in progress the
+  approval is kept and an `EXECUTION_DEFERRED` event is written; the next run executes it.
+- The adapter gate now needs both `status == APPROVED` and an `approvals` row decided by a qa_manager.
+- `POST /actions/{id}/reject` needs a non-empty `reason`. A rejected `REMOVE_FROM_SHIPMENT` escalates the case
+  (affected stock may ship); a rejected `RELEASE_HOLD` just leaves the hold on.
+- Dispositions: qa_manager, batch must belong to the case, latest one wins. Release requests: no disposition, or
+  `DESTROY` / `RETURN_TO_SUPPLIER` → 409 `POLICY_VIOLATION` (audited). Releasable: `RELEASE_AS_IS`, `RELABEL`, `REWORK`.
+- `RELEASE_HOLD.target` is `{batch_id, hold_ids}` with `hold_ids` comma-separated (the contract allows string
+  values only); one release covers every location this case held.
+- New audit kinds: `APPROVAL_DECIDED`, `DISPOSITION_RECORDED`, `EXECUTION_DEFERRED`.
+- Holds are shared physical state: a second case on the same lot, without a demo reset, finds the stock already
+  HELD by the first case and verifies it as held. Reset before each demo scenario.
+
+## 2026-10-23 — Live Claude extraction (Anvi)
+
+- `LLM_MODE=live` calls Claude (`LLM_MODEL`, default `claude-opus-5-5`, effort `medium`) through the official
+  `anthropic` SDK with a JSON-schema structured output (`output_config.format`), so the reply always parses into the
+  four fields. `LLM_MODE=record` does the same and saves the result as the `MockLLM` fixture for that notice, so a
+  real extraction can be replayed in tests and demos without a key. `mock` stays the default.
+- Refusals: server-side `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`) retries a safety decline on
+  Anthropic's recommended model; `Extraction.model` records the model that actually served it.
+- The PDF is sent as the same pypdf page text the evidence check uses, so verbatim quotes can match; page N in the
+  prompt is page N in evidence.
+- Prompt injection: the notice is only in the user turn, wrapped in tags with a random per-call suffix that the
+  system prompt names as untrusted data. The LLM still cannot act: allergens come from `rules`, writes from the agent,
+  and the evidence check downgrades any quote not found verbatim.
+- Failure handling: refusal, truncation or unparseable output -> every field MISSING + `LLM_UNCERTAIN` (the case
+  escalates); API errors and missing credentials -> `UPSTREAM_FAILED`, the run fails and the case escalates with
+  the reason in the `RUN_FAILED` event. A failed extraction is never recorded as a fixture.
+
+## 2026-10-23 — Eval suite, benchmarks, ROI metrics (Anvi)
+
+- `backend/scenarios/scenarios.json`: 20 scenarios (notice + expected status, per-batch decisions with allowed
+  alternatives, batches that must stay untouched). PDFs are generated from text by `scenarios/pdf.py`, so content
+  hashes are reproducible. Scenarios use the stub seed (extended; RM-114 / VL-2291 data unchanged).
+- `python -m scenarios.runner` runs every scenario through the real API in mock mode (free, deterministic);
+  `--record-missing` calls Claude only for notices with no recording and saves them. All 20 notices are recorded
+  (16 live calls to claude-opus-5-5, $0.267 total). Only recording runs (or `--save`) write
+  `scenarios/results/latest.json`, so the real-latency run is not overwritten by replays.
+- Recorded result: 16/20 pass, 0 false holds, batch recall 0.909, decision accuracy 0.844, median agent time 4.5 s
+  (live Claude). The 4 failures are kept as named `known_gap`s, not hidden by loosening expectations:
+  - S03 / and S16, S17 (pass, but by escalating): `LLM_UNCERTAIN` -> `UNCERTAIN_ESCALATE` places no protective holds
+    (M1 spec). Proposal: hold and escalate, since a hold is reversible.
+  - S04: one-off lot deviation reads as AMBIGUOUS `effective_lot` (prompt defines it as the first lot of a change).
+  - S11: a certificate ("lot X is soy lecithin") reads as AMBIGUOUS; safe but a false alarm.
+  - S19: `may_contain` is extracted but rules ignore it; precautionary statements escalate instead of HOLD_RELABEL.
+  The pytest gate fails on any unexpected failure and on a known gap that starts passing.
+- `POST /benchmarks` (qa_*, admin): manual or agent timed runs; unknown scenario ids -> 422.
+  `GET /metrics/roi`: `measured` = benchmark rows + the last eval file (agent timings only where Claude was live);
+  `assumptions` from `backend/config/roi_assumptions.json` (editable inputs, never results).
+- Contract examples added: `benchmark.json`, `roi_summary.json` (no schema changes).
