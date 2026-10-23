@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from api.db import now_iso
 from api.errors import ApiError
 from sim.db import (
-    Batch, Fault, Genealogy, Hold, Inventory, Label, LineRemoval, Material, MaterialLot, Product, Recipe, Shipment,
+    Batch, Fault, OutboxMessage, Ticket, Genealogy, Hold, Inventory, Label, LineRemoval, Material, MaterialLot, Product, Recipe, Shipment,
     ShipmentLine,
 )
 from sim.seed import reset_sim
@@ -206,6 +206,98 @@ def remove_line(shipment_id: str, body: RemoveLineRequest, idempotency_key: str 
         db.add(done)
         db.commit()
     return {"shipment_id": done.shipment_id, "batch_id": done.batch_id, "qty": done.qty, "removed_at": done.removed_at}
+
+
+# ---- Tickets (relabel work orders)
+
+class TicketRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    sku: str = Field(min_length=1)
+    batch_id: str | None = None
+    summary: str = Field(min_length=1)
+    case_ref: str = Field(min_length=1)
+
+
+def ticket_out(t: Ticket) -> dict:
+    return {"ticket_id": t.ticket_id, "sku": t.sku, "batch_id": t.batch_id, "summary": t.summary,
+            "case_ref": t.case_ref, "status": t.status, "created_at": t.created_at}
+
+
+@router.post("/tickets")
+def create_ticket(body: TicketRequest, idempotency_key: str = Header(min_length=1), db: Session = Depends(get_sim_db)):
+    ticket = db.scalar(select(Ticket).where(Ticket.idempotency_key == idempotency_key))
+    if ticket:
+        return JSONResponse(ticket_out(ticket), status_code=200)
+    ticket = Ticket(ticket_id=f"T-{uuid.uuid4().hex[:8].upper()}", status="OPEN", created_at=now_iso(),
+                    idempotency_key=idempotency_key, **body.model_dump())
+    db.add(ticket)
+    db.commit()
+    return JSONResponse(ticket_out(ticket), status_code=201)
+
+
+@router.get("/tickets")
+def tickets(case_ref: str, db: Session = Depends(get_sim_db)):
+    return [ticket_out(t) for t in db.scalars(select(Ticket).where(Ticket.case_ref == case_ref).order_by(Ticket.created_at))]
+
+
+@router.get("/tickets/{ticket_id}")
+def ticket(ticket_id: str, db: Session = Depends(get_sim_db)):
+    t = db.get(Ticket, ticket_id)
+    if t is None:
+        raise not_found("Ticket", ticket_id)
+    return ticket_out(t)
+
+
+# ---- Outbox (external messages; nothing leaves the machine)
+
+class DraftRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    to: str = Field(min_length=1)
+    subject: str = Field(min_length=1)
+    body: str = Field(min_length=1)
+    case_ref: str = Field(min_length=1)
+
+
+def message_out(m: OutboxMessage) -> dict:
+    return {"message_id": m.message_id, "to": m.to, "subject": m.subject, "body": m.body, "case_ref": m.case_ref,
+            "status": m.status, "created_at": m.created_at, "sent_at": m.sent_at}
+
+
+@router.post("/outbox")
+def create_draft(body: DraftRequest, idempotency_key: str = Header(min_length=1), db: Session = Depends(get_sim_db)):
+    msg = db.scalar(select(OutboxMessage).where(OutboxMessage.idempotency_key == idempotency_key))
+    if msg:
+        return JSONResponse(message_out(msg), status_code=200)
+    msg = OutboxMessage(message_id=f"M-{uuid.uuid4().hex[:8].upper()}", status="DRAFT", created_at=now_iso(),
+                        idempotency_key=idempotency_key, **body.model_dump())
+    db.add(msg)
+    db.commit()
+    return JSONResponse(message_out(msg), status_code=201)
+
+
+@router.post("/outbox/{message_id}/send")
+def send_message(message_id: str, db: Session = Depends(get_sim_db)):
+    msg = db.get(OutboxMessage, message_id)
+    if msg is None:
+        raise not_found("Message", message_id)
+    if msg.status == "DRAFT":  # sending twice is a no-op
+        msg.status, msg.sent_at = "SENT", now_iso()
+        db.commit()
+    return message_out(msg)
+
+
+@router.get("/outbox")
+def outbox(case_ref: str, db: Session = Depends(get_sim_db)):
+    rows = db.scalars(select(OutboxMessage).where(OutboxMessage.case_ref == case_ref).order_by(OutboxMessage.created_at))
+    return [message_out(m) for m in rows]
+
+
+@router.get("/outbox/{message_id}")
+def message(message_id: str, db: Session = Depends(get_sim_db)):
+    m = db.get(OutboxMessage, message_id)
+    if m is None:
+        raise not_found("Message", message_id)
+    return message_out(m)
 
 
 # ---- Labels

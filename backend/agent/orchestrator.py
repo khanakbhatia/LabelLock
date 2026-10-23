@@ -14,7 +14,7 @@ import httpx
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from adapters.sim import ApprovalGate, ErpClient, LabelsClient, SimHttp, WmsClient, idempotency_key
+from adapters.sim import ApprovalGate, ErpClient, LabelsClient, OutboxClient, SimHttp, TicketsClient, WmsClient, idempotency_key
 from agent.extract import check_evidence, pdf_pages, unresolved_critical
 from agent.llm import PROMPT_VERSION, get_llm
 from api.db import Action, BatchDecision, Case, Extraction, Notice, NoticeAttachment, TraceResult, Verification, new_id, now_iso
@@ -32,6 +32,9 @@ ALWAYS_RERUN = {"execute", "verify", "report"}
 KNOWN_LLM_FLAGS = {"LLM_UNCERTAIN"}
 # Holds are reversible, so stock is held while a human resolves uncertainty; the case still escalates.
 PROTECTIVE_HOLD = HOLDABLE | {"UNCERTAIN_ESCALATE"}
+RELABEL = {"HOLD_RELABEL", "CLAIM_CONFLICT"}  # the label (or its claim) must change
+MESSAGES = ("SEND_RETAILER_NOTICE", "SEND_SUPPLIER_QUERY")  # external: drafted by the agent, sent only after approval
+SIGNATURE = "Northfield Snacks Quality Assurance"
 
 
 def parse_iso(ts: str) -> datetime:
@@ -43,7 +46,8 @@ class CaseRun:
         self.db, self.case, self.settings = db, case, settings
         http = SimHttp(http_client, settings.sim_api_key, on_call=lambda s: self.audit("ADAPTER_CALL", s))
         self.erp, self.labels = ErpClient(http), LabelsClient(http)
-        self.wms = WmsClient(http, ApprovalGate(db, case.id, AGENT))
+        gate = ApprovalGate(db, case.id, AGENT)
+        self.wms, self.tickets, self.outbox = WmsClient(http, gate), TicketsClient(http), OutboxClient(http, gate)
 
     # ---- helpers
 
@@ -96,7 +100,8 @@ class CaseRun:
         self.db.commit()
         stopped = any(v == "STOPPED" for v in (case.steps or {}).values())
         for step in STEPS:
-            if (stopped and step != "report") or ((case.steps or {}).get(step) == "DONE" and step not in ALWAYS_RERUN):
+            # a stopped case still carries out what a QA manager approved and re-reads it; it decides nothing new
+            if (stopped and step not in ALWAYS_RERUN) or ((case.steps or {}).get(step) == "DONE" and step not in ALWAYS_RERUN):
                 continue
             self.audit("STEP_STARTED", {"step": step, "run_id": run_id})
             ok = getattr(self, step)()
@@ -141,6 +146,8 @@ class CaseRun:
             self.audit("RULE_FIRED", {"rule_id": a["rule_id"], "allergen": a["allergen"], "term": a["term"],
                                       "input": "may_contain" if a.get("precautionary") else "new_ingredient"})
         if critical:
+            self.request_supplier_query([f"the {name.replace('_', ' ')} is {fields.get(name, {}).get('status', 'MISSING').lower()}"
+                                         for name in critical])
             return self.escalate("CRITICAL_FIELD_UNRESOLVED", fields=critical)
         return True
 
@@ -177,7 +184,10 @@ class CaseRun:
                                   graph={"batches": batches, "labels": labels, "shipment_status": shipment_status}, gaps=gaps))
         self.audit("TRACE_COMPLETED", {"material_lots": [lot_id], "batches": [b["batch_id"] for b in batches], "gaps": gaps})
         blocking = [g for g in gaps if g["kind"] in ("LOT_NOT_FOUND", "MATERIAL_MISMATCH")]
-        return self.escalate(blocking[0]["kind"], gaps=gaps) if blocking else True
+        if blocking:
+            self.request_supplier_query([g["detail"] for g in blocking])
+            return self.escalate(blocking[0]["kind"], gaps=gaps)
+        return True
 
     def decide(self) -> bool:
         ex = self.db.get(Extraction, self.case.id)
@@ -198,7 +208,8 @@ class CaseRun:
     def act(self) -> bool:
         tr = self.db.get(TraceResult, self.case.id)
         batches = {b["batch_id"]: b for b in tr.graph["batches"]}
-        decisions = self.db.scalars(select(BatchDecision).where(BatchDecision.case_id == self.case.id).order_by(BatchDecision.batch_id))
+        decisions = list(self.db.scalars(select(BatchDecision).where(BatchDecision.case_id == self.case.id)
+                                         .order_by(BatchDecision.batch_id)))
         for d in decisions:
             if d.decision not in PROTECTIVE_HOLD:
                 continue
@@ -219,7 +230,73 @@ class CaseRun:
                 if created:
                     self.audit("APPROVAL_REQUESTED", {"action_id": action.id, "type": action.type, "target": action.target})
             self.db.commit()
+        self.create_relabel_tickets(decisions, batches)
+        self.draft_retailer_notices(decisions, batches, tr.graph["shipment_status"])
+        self.db.commit()
         return True
+
+    def create_relabel_tickets(self, decisions: list[BatchDecision], batches: dict) -> None:
+        """One relabel work order per SKU (a label is per SKU, not per batch). Internal and reversible: no approval."""
+        for sku in sorted({batches[d.batch_id]["sku"] for d in decisions if d.decision in RELABEL}):
+            affected = [d for d in decisions if d.decision in RELABEL and batches[d.batch_id]["sku"] == sku]
+            target = {"sku": sku}
+            action, _ = self.get_or_create_action("CREATE_RELABEL_TICKET", target, requires_approval=False, status="PROPOSED")
+            if action.status != "PROPOSED":
+                continue
+            product = batches[affected[0].batch_id]["product"]
+            summary = f"Relabel {sku} ({product}). " + " ".join(f"{d.batch_id}: {d.rationale}" for d in affected)
+            self.set_action_status(action, "EXECUTING")
+            try:
+                ticket = self.tickets.create(self.case.id, target, summary)
+            except ApiError as e:
+                action.result = {"error": e.code, "message": e.message}
+                self.set_action_status(action, "ESCALATED", reason=e.code)
+                continue
+            action.result = {"ticket_id": ticket["ticket_id"], "summary": summary}
+            self.set_action_status(action, "EXECUTED", ticket_id=ticket["ticket_id"])
+
+    def draft_retailer_notices(self, decisions: list[BatchDecision], batches: dict, shipment_status: dict) -> None:
+        """Affected stock that already left for a retailer: draft a withdrawal notice; a QA manager approves sending."""
+        for d in decisions:
+            if d.decision != "SHIPPED_ESCALATE":
+                continue
+            b = batches[d.batch_id]
+            for s in b["shipments"]:
+                if shipment_status[s["shipment_id"]] not in SHIPPED_STATUSES:
+                    continue
+                target = {"batch_id": d.batch_id, "shipment_id": s["shipment_id"], "to": s["destination"]}
+                subject = f"Product withdrawal: {b['product']} batch {d.batch_id} (shipment {s['shipment_id']})"
+                body = (f"Dear {s['destination']},\n\nBatch {d.batch_id} of {b['product']} ({b['sku']}), {s['qty']} units on "
+                        f"shipment {s['shipment_id']}, has a labelling problem: {d.rationale}\n\nPlease withdraw this batch "
+                        f"from sale and hold it until we confirm next steps.\n\n{SIGNATURE}")
+                self.draft_message("SEND_RETAILER_NOTICE", target, s["destination"], subject, body)
+
+    def request_supplier_query(self, reasons: list[str]) -> None:
+        notice = self.db.get(Notice, self.case.notice_id)
+        if notice.supplier_id is None:  # never reply to an unverified sender: it may be an impersonator
+            self.audit("SUPPLIER_QUERY_SKIPPED", {"reason": "sender not verified"})
+            return
+        to = notice.from_address or f"supplier-portal:{notice.supplier_id}"
+        body = (f"Dear supplier,\n\nWe could not act on your notice \"{notice.subject}\" because:\n"
+                + "".join(f"- {r}\n" for r in reasons)
+                + f"\nPlease reply with the material code, the new composition and the first affected lot.\n\n{SIGNATURE}")
+        self.draft_message("SEND_SUPPLIER_QUERY", {"notice_id": notice.id, "to": to}, to,
+                           f"Clarification needed: {notice.subject}", body)
+
+    def draft_message(self, type_: str, target: dict, to: str, subject: str, body: str) -> None:
+        """Drafting is allowed; the action waits in PENDING_APPROVAL until a QA manager approves sending."""
+        action, _ = self.get_or_create_action(type_, target, requires_approval=True, status="PENDING_APPROVAL")
+        if action.status != "PENDING_APPROVAL" or (action.result or {}).get("draft_id"):
+            return  # already drafted (a resumed run must not draft twice)
+        try:
+            draft = self.outbox.draft(self.case.id, type_, target, to, subject, body)
+        except ApiError as e:
+            action.result = {"error": e.code, "message": e.message}
+            self.set_action_status(action, "ESCALATED", reason=e.code)
+            return
+        action.result = {"draft_id": draft["message_id"], "to": to, "subject": subject, "body": body}
+        self.audit("APPROVAL_REQUESTED", {"action_id": action.id, "type": type_, "target": target,
+                                          "draft_id": draft["message_id"]})
 
     def place_hold(self, action: Action, reason: str) -> None:
         self.set_action_status(action, "EXECUTING")
@@ -234,7 +311,7 @@ class CaseRun:
 
     def execute(self) -> bool:
         """Carry out APPROVED restricted actions. The adapter re-checks the approval in the app DB."""
-        for action in self.actions("REMOVE_FROM_SHIPMENT", "RELEASE_HOLD"):
+        for action in self.actions("REMOVE_FROM_SHIPMENT", "RELEASE_HOLD", *MESSAGES):
             if action.status != "APPROVED":
                 continue
             # Call while still APPROVED (the gate checks that); a crash before EXECUTED is recorded just
@@ -242,6 +319,8 @@ class CaseRun:
             try:
                 if action.type == "REMOVE_FROM_SHIPMENT":
                     action.result = self.wms.remove_line(action.id)
+                elif action.type in MESSAGES:
+                    action.result = {**action.result, "sent_at": self.outbox.send(action.id, action.type)["sent_at"]}
                 else:
                     action.result = {"released": [h["hold_id"] for h in self.wms.release_hold(action.id)]}
             except ApiError as e:
@@ -253,8 +332,8 @@ class CaseRun:
         return True
 
     def verify(self) -> bool:
-        tr = self.db.get(TraceResult, self.case.id)
-        graph = {**tr.graph, "batches": [dict(b) for b in tr.graph["batches"]]}
+        tr = self.db.get(TraceResult, self.case.id)  # None when the case stopped before tracing
+        graph = {**tr.graph, "batches": [dict(b) for b in tr.graph["batches"]]} if tr else {"batches": []}
         for action in self.actions("PLACE_HOLD"):
             if action.status not in ("EXECUTED", "VERIFY_FAILED"):
                 continue
@@ -285,6 +364,20 @@ class CaseRun:
             self.set_action_status(action, "VERIFIED" if passed else "VERIFY_FAILED")
             if not passed:
                 self.audit("ESCALATED", {"reason": "VERIFY_FAILED", "action_id": action.id, "target": action.target})
+        for action in self.actions("CREATE_RELABEL_TICKET"):
+            if action.status != "EXECUTED":
+                continue
+            ticket = self.tickets.get(action.result["ticket_id"])
+            passed = ticket is not None and ticket["status"] in ("OPEN", "DONE")
+            self.record_verification(action, {"ticket": "exists"}, {"ticket": ticket and ticket["status"]}, passed)
+            self.set_action_status(action, "VERIFIED" if passed else "VERIFY_FAILED")
+        for action in self.actions(*MESSAGES):
+            if action.status != "EXECUTED":
+                continue
+            msg = self.outbox.get(action.result["draft_id"])
+            passed = msg is not None and msg["status"] == "SENT"
+            self.record_verification(action, {"status": "SENT"}, {"status": msg and msg["status"]}, passed)
+            self.set_action_status(action, "VERIFIED" if passed else "VERIFY_FAILED")
         for action in self.actions("RELEASE_HOLD"):
             if action.status != "EXECUTED":
                 continue
@@ -297,7 +390,8 @@ class CaseRun:
                 if b["batch_id"] == action.target["batch_id"]:
                     b["locations"] = [{"location": r["location"], "qty": r["qty"], "status": r["status"]}
                                       for r in self.wms.inventory(b["batch_id"])]
-        tr.graph = graph
+        if tr:
+            tr.graph = graph
         self.db.commit()
         return True
 
@@ -345,7 +439,7 @@ class CaseRun:
         if any(a.status in ("PENDING_APPROVAL", "APPROVED", "EXECUTING", "EXECUTED", "PROPOSED") for a in actions):
             waiting = any(a.status == "PENDING_APPROVAL" for a in actions)
             return ("AWAITING_APPROVAL", "restricted actions pending") if waiting else ("ESCALATED", "actions not verified")
-        held = {a.target["batch_id"] for a in actions if a.status == "VERIFIED"}
+        held = {a.target.get("batch_id") for a in actions if a.status == "VERIFIED"}
         if all(d.batch_id in held for d in affected):
             return "CONTAINED", "all affected batches verified"
         return "ESCALATED", "affected batch without verified containment"
