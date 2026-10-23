@@ -44,4 +44,7 @@ def check_evidence(fields: dict, email_text: str, pages: list[str]) -> tuple[dic
 
 
 def unresolved_critical(fields: dict) -> list[str]:
-    return [name for name in CRITICAL_FIELDS if fields.get(name, {}).get("status") != "FOUND"]
+    """A notice may change only the precautionary statement; then no new_ingredient is needed."""
+    found = {name for name, f in fields.items() if f.get("status") == "FOUND"}
+    required = [n for n in CRITICAL_FIELDS if not (n == "new_ingredient" and "may_contain" in found)]
+    return [name for name in required if name not in found]

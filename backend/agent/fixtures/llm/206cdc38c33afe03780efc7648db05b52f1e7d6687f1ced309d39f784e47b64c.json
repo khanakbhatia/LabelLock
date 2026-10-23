@@ -12,9 +12,9 @@
       }
     },
     "new_ingredient": {
-      "value": "whey protein",
+      "value": "whey protein (replacing pea protein)",
       "status": "FOUND",
-      "confidence": 0.93,
+      "confidence": 0.95,
       "evidence": {
         "source": "email",
         "page": null,
@@ -39,5 +39,6 @@
     }
   },
   "uncertainty_flags": [],
-  "model": "claude-opus-5-5"
+  "model": "claude-opus-5-5",
+  "prompt_version": "extract-v2"
 }

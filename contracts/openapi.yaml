@@ -415,6 +415,24 @@ paths:
         "401": {$ref: "#/components/responses/Unauthenticated"}
         "403": {$ref: "#/components/responses/Forbidden"}
 
+  /scenarios:
+    get:
+      summary: Eval scenarios available for timed runs
+      description: |
+        Roles: qa_specialist, qa_manager, admin. Id and notice subject only; titles and expected outcomes are
+        withheld so a manual baseline run is not given the answer.
+      x-roles: [qa_specialist, qa_manager, admin]
+      responses:
+        "200":
+          description: Scenarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/ScenarioSummary"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
   /benchmarks:
     post:
       summary: Log a timed run (P1)
@@ -451,6 +469,19 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
 
   /demo/faults:
+    get:
+      summary: Current injected faults
+      description: "Roles: admin. Only exists when DEMO_MODE=true (otherwise 404). A demo reset turns every fault off."
+      x-roles: [admin]
+      responses:
+        "200":
+          description: Faults
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DemoFaults"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
     put:
       summary: Toggle injected faults
       description: "Roles: admin. Only exists when DEMO_MODE=true (otherwise 404)."
@@ -757,6 +788,7 @@ components:
       properties:
         allergen: {type: string}
         rule_id: {type: string}
+        precautionary: {type: boolean, description: "true for a new 'may contain' (cross-contact) statement, not an ingredient"}
     Extraction:
       type: object
       additionalProperties: false
@@ -1044,6 +1076,14 @@ components:
               label: {type: string}
               value: {type: number}
               unit: {type: string}
+
+    ScenarioSummary:
+      type: object
+      additionalProperties: false
+      required: [id, subject]
+      properties:
+        id: {type: string}
+        subject: {type: string}
 
     # ---- demo
     DemoFaults:

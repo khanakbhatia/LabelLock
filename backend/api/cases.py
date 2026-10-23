@@ -313,6 +313,11 @@ def sim_admin(request: Request) -> SimAdminClient:
     return SimAdminClient(SimHttp(request.app.state.sim_http, request.app.state.settings.sim_api_key))
 
 
+@router.get("/demo/faults")
+def demo_faults_state(request: Request, user: User = Depends(require_roles("admin"))):
+    return sim_admin(request).get_faults()
+
+
 @router.put("/demo/faults")
 def demo_faults(body: DemoFaults, request: Request, user: User = Depends(require_roles("admin"))):
     sim_admin(request).set_faults(body.wms_silent_hold_failure)

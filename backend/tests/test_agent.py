@@ -258,3 +258,23 @@ def test_demo_controls_need_demo_mode_and_reset_clears_cases(env, tmp_path):
 
     app.state.settings = Settings(**{**app.state.settings.__dict__, "demo_mode": False})
     assert_error(client.post("/api/demo/reset", headers=token("admin")), 404, "NOT_FOUND")
+
+
+def test_uncertain_extraction_holds_and_escalates_without_restricted_actions(env, monkeypatch):
+    """Policy, independent of what the model happens to flag: uncertain stock is held, a human decides the rest."""
+    import agent.llm as llm_mod
+    replay = llm_mod.MockLLM.extract
+    monkeypatch.setattr(llm_mod.MockLLM, "extract",
+                        lambda self, **kw: replay(self, **kw) | {"uncertainty_flags": ["LLM_UNCERTAIN"]})
+    app, client, token = env
+    case_id = submit(client, token)
+    run(client, token, case_id)
+    case = detail(client, token, case_id)
+    assert case["status"] == "ESCALATED"
+    assert {d["batch_id"]: d["decision"] for d in case["batch_decisions"]} == {
+        "FG-1040": "NO_IMPACT", "FG-1041": "UNCERTAIN_ESCALATE", "FG-1042": "UNCERTAIN_ESCALATE", "FG-1043": "UNCERTAIN_ESCALATE"}
+    holds = {(a["target"]["batch_id"], a["target"]["location"]): a["status"] for a in case["actions"] if a["type"] == "PLACE_HOLD"}
+    assert holds == {("FG-1041", "DC-EAST"): "VERIFIED", ("FG-1042", "DC-EAST"): "VERIFIED",
+                     ("FG-1042", "PLANT-1"): "VERIFIED", ("FG-1043", "DC-EAST"): "VERIFIED"}
+    assert not [a for a in case["actions"] if a["type"] == "REMOVE_FROM_SHIPMENT"]  # restricted: waits for a human
+    assert inventory(app)[("FG-1040", "PLANT-1")] == "AVAILABLE"

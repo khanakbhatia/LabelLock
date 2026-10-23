@@ -126,6 +126,10 @@ def score(s: dict, case: dict, inventory: dict[str, set[str]], duplicate: bool |
     false_holds = sorted(b for b in exp["untouched"] if b in held or "HELD" in inventory.get(b, set()))
     if false_holds:
         problems.append(f"held but should be untouched: {false_holds}")
+    verified_holds = {a["target"]["batch_id"] for a in case["actions"] if a["type"] == "PLACE_HOLD" and a["status"] == "VERIFIED"}
+    not_held = sorted(set(exp.get("must_hold", [])) - verified_holds)
+    if not_held:
+        problems.append(f"no verified protective hold on: {not_held}")
     if exp.get("verify_failed") and not any(a["status"] == "VERIFY_FAILED" for a in case["actions"]):
         problems.append("expected a VERIFY_FAILED action")
     if exp.get("duplicate") and not (duplicate and case_count == 1):
@@ -136,9 +140,12 @@ def score(s: dict, case: dict, inventory: dict[str, set[str]], duplicate: bool |
     return {
         "id": s["id"], "title": s["title"], "passed": not problems, "problems": problems,
         "status": case["status"], "decisions": actual, "held": sorted(held),
+        "removal_requested": sorted({a["target"]["batch_id"] for a in case["actions"] if a["type"] == "REMOVE_FROM_SHIPMENT"}),
         "expected_decisions": len(exp["decisions"]), "correct_decisions": correct,
         "expected_affected": len(expected_affected), "affected_found": len(found), "false_holds": len(false_holds),
-        "escalation_expected": exp["status"] == ["ESCALATED"], "escalated": case["status"] == "ESCALATED",
+        # escalating is right when ESCALATED is an allowed outcome; not escalating is right unless it was required
+        "escalation_required": exp["status"] == ["ESCALATED"], "escalated": case["status"] == "ESCALATED",
+        "escalation_correct": ("ESCALATED" in exp["status"]) if case["status"] == "ESCALATED" else exp["status"] != ["ESCALATED"],
         "agent_seconds": case["metrics"]["elapsed_seconds"],
         "extraction_model": (case["extraction"] or {}).get("model"),
     }
@@ -147,8 +154,8 @@ def score(s: dict, case: dict, inventory: dict[str, set[str]], duplicate: bool |
 def summarize(results: list[dict], mode: str) -> dict:
     n = len(results)
     ratio = lambda a, b: round(a / b, 4) if b else None  # noqa: E731
-    seconds = [r["agent_seconds"] for r in results if r["agent_seconds"] is not None and r.get("llm") == "live"]
-    strict = [r for r in results if r["escalation_expected"] or r["escalated"]]
+    seconds = [r["live_agent_seconds"] for r in results if r.get("live_agent_seconds") is not None]
+    relevant = [r for r in results if r["escalation_required"] or r["escalated"]]
     return {
         "run_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "llm_mode": mode,
         "metrics": {
@@ -158,7 +165,7 @@ def summarize(results: list[dict], mode: str) -> dict:
             "decision_accuracy": ratio(sum(r["correct_decisions"] for r in results), sum(r["expected_decisions"] for r in results)),
             "batch_recall": ratio(sum(r["affected_found"] for r in results), sum(r["expected_affected"] for r in results)),
             "false_holds": sum(r["false_holds"] for r in results),
-            "escalation_accuracy": ratio(sum(r["escalation_expected"] == r["escalated"] for r in strict), len(strict)),
+            "escalation_accuracy": ratio(sum(r["escalation_correct"] for r in relevant), len(relevant)),
             "known_gaps": sum(bool(r.get("known_gap")) and not r["passed"] for r in results),
             "agent_median_seconds": round(statistics.median(seconds), 3) if seconds else None,
         },
@@ -181,6 +188,13 @@ def run_suite(only: list[str] | None = None, record_missing: bool = False, resul
                 results.append(run_one(env, s, llm))
         finally:
             env.close()
+    # Real latency only comes from live Claude calls; a replay run keeps each scenario's last live measurement.
+    prior = {}
+    if results_path and results_path.exists():
+        prior = {p["id"]: p.get("live_agent_seconds", p["agent_seconds"] if p.get("llm") == "live" else None)
+                 for p in json.loads(results_path.read_text(encoding="utf-8"))["results"]}
+    for res in results:
+        res["live_agent_seconds"] = res["agent_seconds"] if res["llm"] == "live" else prior.get(res["id"])
     summary = summarize(results, "record-missing" if record_missing else "mock")
     if results_path:
         results_path.parent.mkdir(parents=True, exist_ok=True)

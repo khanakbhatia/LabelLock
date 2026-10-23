@@ -62,8 +62,9 @@ def decide_batch(label: dict | None, added_allergens: list[dict] | None, locatio
                  shipment_state: list[dict], *, uncertain: bool = False) -> Decision:
     """Decide one finished batch.
 
-    label: sim label row or None if unknown. added_allergens: [{allergen, rule_id}] from the notice, or
-    None if they could not be determined. location_state: [{location, qty, status}].
+    label: sim label row or None if unknown. added_allergens: [{allergen, rule_id, precautionary?}] from the
+    notice, or None if they could not be determined; precautionary=True means a new "may contain" statement
+    (cross-contact), not an ingredient. location_state: [{location, qty, status}].
     shipment_state: [{shipment_id, status, qty, ...}] lines carrying this batch.
     uncertain: the extraction carried an uncertainty flag (the only way the LLM can influence this).
     """
@@ -73,25 +74,31 @@ def decide_batch(label: dict | None, added_allergens: list[dict] | None, locatio
     if not added_allergens:
         return Decision("NO_IMPACT", ["NO-NEW-ALLERGEN"], "The change adds no major allergen.")
 
-    added = {canonical(a["allergen"]): a for a in added_allergens}
+    added = {canonical(a["allergen"]): a for a in added_allergens if not a.get("precautionary")}
+    cross_contact = {canonical(a["allergen"]) for a in added_allergens if a.get("precautionary")} - set(added)
     declared = {canonical(a) for a in label["contains"]}
     precautionary = {canonical(a) for a in label["may_contain"]}
     undeclared = [a for a in added if a not in declared]
     only_precautionary = [a for a in undeclared if a in precautionary]
     missing = [a for a in undeclared if a not in precautionary]
+    # a new "may contain X" needs X on the label as contains or may-contain
+    missing_precaution = sorted(a for a in cross_contact if a not in declared and a not in precautionary)
+    every = set(added) | cross_contact
     broken = [
         c for c in _claims()
-        if any(claim.strip().lower() in c["label_text"] for claim in label["claims"]) and any(a in c["broken_by"] for a in added)
+        if any(claim.strip().lower() in c["label_text"] for claim in label["claims"]) and any(a in c["broken_by"] for a in every)
     ]
-    if not undeclared and not broken:
+    if not undeclared and not broken and not missing_precaution:
         return Decision("NO_IMPACT", ["LBL-ALREADY-DECLARED"],
-                        f"Label already declares {', '.join(sorted(added))}.")
+                        f"Label already declares {', '.join(sorted(every))}.")
 
     label_rules = [c["rule_id"] for c in broken] + (["LBL-MISSING-ALLERGEN"] if missing else []) \
+        + (["LBL-MISSING-PRECAUTION"] if missing_precaution else []) \
         + (["LBL-PRECAUTIONARY-ONLY"] if only_precautionary else [])
     problem = "; ".join(
-        ([f"{', '.join(c['label_text'][0] for c in broken)} claim broken by {', '.join(sorted(added))}"] if broken else [])
+        ([f"{', '.join(c['label_text'][0] for c in broken)} claim broken by {', '.join(sorted(every))}"] if broken else [])
         + ([f"label does not declare {', '.join(missing)}"] if missing else [])
+        + ([f"label lacks 'may contain {', '.join(missing_precaution)}'"] if missing_precaution else [])
         + ([f"{', '.join(only_precautionary)} only in may-contain"] if only_precautionary else [])
     )
 
@@ -108,6 +115,6 @@ def decide_batch(label: dict | None, added_allergens: list[dict] | None, locatio
         return Decision("NOT_IN_SCOPE", ["INV-NO-STOCK", *label_rules], f"{problem.capitalize()}; no stock or open shipments.")
     if broken:
         return Decision("CLAIM_CONFLICT", label_rules, f"{problem.capitalize()}.")
-    if missing:
+    if missing or missing_precaution:
         return Decision("HOLD_RELABEL", label_rules, f"{problem.capitalize()}.")
     return Decision("HOLD", label_rules, f"{problem.capitalize()}; hold for QA review.")
