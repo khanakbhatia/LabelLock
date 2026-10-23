@@ -1,0 +1,8 @@
+[
+  {"id": "u_valley",  "username": "valley.ingredients", "name": "Valley Ingredients", "role": "supplier",            "password": "demo"},
+  {"id": "u_priya",   "username": "priya.qa",           "name": "Priya Nair",         "role": "qa_specialist",       "password": "demo"},
+  {"id": "u_daniel",  "username": "daniel.qam",         "name": "Daniel Okafor",      "role": "qa_manager",          "password": "demo"},
+  {"id": "u_marco",   "username": "marco.ship",         "name": "Marco Rossi",        "role": "shipping_supervisor", "password": "demo"},
+  {"id": "u_admin",   "username": "admin",              "name": "Admin",              "role": "admin",               "password": "demo"},
+  {"id": "u_agent",   "username": "labellock-agent",    "name": "LabelLock Agent",    "role": "agent",               "password": "demo"}
+]
