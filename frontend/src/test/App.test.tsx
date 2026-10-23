@@ -4,14 +4,14 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../auth';
 import { App } from '../App';
-import { mockControls } from '../api/mocks';
+import { mockControls, mocks } from '../api/mocks';
 import inboxExample from '../../../contracts/examples/inbox.json';
 
 function start(path = '/login') {
   return render(<MemoryRouter initialEntries={[path]}><AuthProvider><App /></AuthProvider></MemoryRouter>);
 }
 async function signIn(username: string) {
-  await userEvent.click(screen.getByRole('button', { name: new RegExp(username, 'i') }));
+  await userEvent.click(await screen.findByRole('button', { name: new RegExp(username, 'i') }));
   await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
 }
 beforeEach(() => { localStorage.clear(); mockControls.reset(); });
@@ -64,7 +64,7 @@ describe('QA inbox', () => {
   it('shows an error and retries successfully', async () => {
     mockControls.setInboxError(true);
     start(); await signIn('priya.qa');
-    expect(await screen.findByText('Inbox temporarily unavailable')).toBeInTheDocument();
+    expect(await screen.findByText('Inbox temporarily unavailable', {}, { timeout: 3000 })).toBeInTheDocument();
     mockControls.setInboxError(false);
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() => expect(screen.getByRole('table')).toBeInTheDocument());
@@ -75,6 +75,23 @@ describe('QA inbox', () => {
     const table = await screen.findByRole('table', {}, { timeout: 3000 });
     await userEvent.click(within(table).getAllByText(inboxExample[0].supplier)[0]);
     expect(await screen.findByRole('heading', { name: 'Case workspace' })).toBeInTheDocument();
-    expect(screen.getByText('Coming in M2')).toBeInTheDocument();
+    expect(await screen.findByText(inboxExample[0].subject)).toBeInTheDocument();
+  });
+});
+
+describe('shared approval screen', () => {
+  it('shows the backend 403 to a QA specialist', async () => {
+    localStorage.setItem('labellock_token', 'mock:priya.qa');
+    start('/approvals');
+    expect(await screen.findByText(/A QA manager must approve or reject/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument();
+    await expect(mocks.approveAction('mock:priya.qa', 'a_012')).rejects.toMatchObject({ status: 403, response: { error: { code: 'FORBIDDEN', request_id: expect.any(String) } } });
+  });
+  it('lets a QA manager approve through the API', async () => {
+    localStorage.setItem('labellock_token', 'mock:daniel.qam');
+    start('/approvals');
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve' }, { timeout: 4000 }));
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm approve' }));
+    expect(await screen.findByRole('status', {}, { timeout: 3000 })).toHaveTextContent('APPROVED');
   });
 });
