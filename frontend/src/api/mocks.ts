@@ -5,9 +5,12 @@ import noticeExample from '../../../contracts/examples/notice.json';
 import forbiddenExample from '../../../contracts/examples/error_forbidden.json';
 import caseByMessage from '../../../contracts/examples/case_by_message.json';
 import caseDetail from '../../../contracts/examples/case_detail.json';
+import caseList from '../../../contracts/examples/case_summary_list.json';
+import timelineExample from '../../../contracts/examples/timeline.json';
+import reportExample from '../../../contracts/examples/case_report.json';
 import approvalExample from '../../../contracts/examples/approvals.json';
 import ingestExample from '../../../contracts/examples/ingest_email_response.json';
-import { ApiError, type Action, type CaseDetail, type CaseSummary, type InboxItem, type IngestEmailResponse, type LabelLockApi, type Notice, type NoticeSummary, type Role, type User } from './types';
+import { ApiError, type Action, type ActionStatus, type AuditEvent, type CaseDetail, type CaseReport, type CaseSummary, type ErrorCode, type InboxItem, type IngestEmailResponse, type LabelLockApi, type Notice, type NoticeSummary, type Role, type UncertaintyFlag, type User } from './types';
 
 const users: Record<string, User> = {
   'valley.ingredients': { id: 'u_valley', name: 'Valley Ingredients', role: 'supplier' },
@@ -24,9 +27,14 @@ let sequence = 100;
 let forcedInboxError = false;
 const caseByMessageId = new Map<string, CaseSummary>([["18c2f4a9b7e01d3a", caseByMessage as CaseSummary]]);
 let approvals: Action[] = approvalExample as Action[];
+let runState: Record<string, 'ANALYZING' | 'AWAITING_APPROVAL'> = {};
+let runConflict = false;
+let casesError = false;
+let caseFlags: UncertaintyFlag[] = [];
+let actionStatus: ActionStatus | null = null;
 
 const delay = () => new Promise<void>(resolve => setTimeout(resolve, 300 + Math.floor(Math.random() * 301)));
-function error(status: number, code: 'FORBIDDEN' | 'UNAUTHENTICATED' | 'NOT_FOUND' | 'VALIDATION_ERROR' | 'UPSTREAM_FAILED', message: string): never {
+function error(status: number, code: ErrorCode, message: string): never {
   throw new ApiError(status, { error: { code, message, details: {}, request_id: 'req_mock' } });
 }
 function userFor(token: string): User {
@@ -95,10 +103,24 @@ export const mocks: LabelLockApi = {
     await delay(); requireRole(token, ['qa_specialist', 'qa_manager', 'shipping_supervisor']);
     const listed = seededInbox.find(item => item.case_id === id);
     const ingested = [...caseByMessageId.values()].find(item => item.id === id);
-    if (id !== 'c_001' && !listed && !ingested) return error(404, 'NOT_FOUND', 'Case not found');
-    return { ...caseDetail, id, status: listed?.case_status ?? ingested?.status ?? 'AWAITING_APPROVAL', notice: listed ? { id: listed.notice_id, supplier: listed.supplier, subject: listed.subject, received_at: listed.received_at } : ingested ? { id: ingested.notice_id, supplier: ingested.supplier, subject: ingested.subject, received_at: ingested.opened_at } : caseDetail.notice } as unknown as CaseDetail;
+    const created = added.find(item => item.case_id === id);
+    if (id !== 'c_001' && !listed && !ingested && !created) return error(404, 'NOT_FOUND', 'Case not found');
+    return { ...caseDetail, id, status: runState[id] ?? listed?.case_status ?? ingested?.status ?? 'RECEIVED', uncertainty_flags: caseFlags, notice: listed ? { id: listed.notice_id, supplier: listed.supplier, subject: listed.subject, received_at: listed.received_at } : ingested ? { id: ingested.notice_id, supplier: ingested.supplier, subject: ingested.subject, received_at: ingested.opened_at } : created ? { id: created.id, supplier: created.supplier, subject: created.subject, received_at: created.received_at } : caseDetail.notice, extraction: id === 'c_001' && runState[id] !== 'ANALYZING' ? caseDetail.extraction : null, trace: id === 'c_001' && runState[id] !== 'ANALYZING' ? caseDetail.trace : null, batch_decisions: id === 'c_001' && runState[id] !== 'ANALYZING' ? caseDetail.batch_decisions : [], actions: id === 'c_001' && runState[id] !== 'ANALYZING' ? (caseDetail.actions.map((a, i) => i === 0 && actionStatus ? { ...a, status: actionStatus } : a)) : [] } as unknown as CaseDetail;
   },
-  async runCase(token, id) { await delay(); requireRole(token, ['qa_specialist', 'qa_manager']); return { case_id: id, run_id: `run_${id}` }; },
+  async listCases(token) {
+    await delay(); requireRole(token, ['qa_specialist', 'qa_manager', 'shipping_supervisor']);
+    if (casesError) return error(502, 'UPSTREAM_FAILED', 'Cases temporarily unavailable');
+    return [...added.map(n => ({ id: n.case_id, notice_id: n.id, status: runState[n.case_id] ?? 'RECEIVED', supplier: n.supplier, subject: n.subject, opened_at: n.received_at, contained_at: null, duplicate_of: null, pending_approvals: 0, uncertainty_flags: [] } as CaseSummary)), ...(caseList as CaseSummary[]).map(c => ({ ...c, status: runState[c.id] ?? c.status, uncertainty_flags: c.id === 'c_001' ? caseFlags : c.uncertainty_flags }))].sort((a, b) => b.opened_at.localeCompare(a.opened_at));
+  },
+  async getTimeline(token, id) { await delay(); requireRole(token, ['qa_specialist', 'qa_manager', 'shipping_supervisor']); if (id !== 'c_001') return []; return timelineExample as AuditEvent[]; },
+  async getReport(token, id) { await delay(); requireRole(token, ['qa_specialist', 'qa_manager']); if (id !== 'c_001') return error(404, 'NOT_FOUND', 'Report not found'); return reportExample as CaseReport; },
+  async runCase(token, id) {
+    await delay(); requireRole(token, ['qa_specialist', 'qa_manager']);
+    if (runConflict || runState[id] === 'ANALYZING') return error(409, 'CONFLICT', 'Agent already running');
+    runState[id] = 'ANALYZING';
+    setTimeout(() => { if (runState[id] === 'ANALYZING') runState[id] = 'AWAITING_APPROVAL'; }, 1500);
+    return { case_id: id, run_id: `run_${id}` };
+  },
   async listApprovals(token) { await delay(); requireRole(token, ['qa_specialist', 'qa_manager']); return approvals.filter(action => action.status === 'PENDING_APPROVAL'); },
   async approveAction(token, id) {
     await delay(); requireRole(token, ['qa_manager']);
@@ -119,6 +141,10 @@ export const mocks: LabelLockApi = {
 
 /** Test hook; never imported by views. */
 export const mockControls = {
-  reset() { added = []; sequence = 100; forcedInboxError = false; approvals = approvalExample as Action[]; caseByMessageId.clear(); caseByMessageId.set('18c2f4a9b7e01d3a', caseByMessage as CaseSummary); },
+  reset() { added = []; sequence = 100; forcedInboxError = false; casesError = false; runConflict = false; caseFlags = []; actionStatus = null; runState = {}; approvals = approvalExample as Action[]; caseByMessageId.clear(); caseByMessageId.set('18c2f4a9b7e01d3a', caseByMessage as CaseSummary); },
   setInboxError(value: boolean) { forcedInboxError = value; },
+  setCasesError(value: boolean) { casesError = value; },
+  setRunConflict(value: boolean) { runConflict = value; },
+  setCaseFlags(value: UncertaintyFlag[]) { caseFlags = value; },
+  setActionStatus(value: ActionStatus | null) { actionStatus = value; },
 };
