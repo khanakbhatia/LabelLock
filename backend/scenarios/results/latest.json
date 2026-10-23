@@ -1,6 +1,6 @@
 {
- "run_at": "2026-10-23T16:41:34Z",
- "llm_mode": "record-missing",
+ "run_at": "2026-10-23T17:08:03Z",
+ "llm_mode": "mock",
  "metrics": {
   "scenarios": 20,
   "passed": 20,
@@ -30,6 +30,12 @@
     "FG-1042",
     "FG-1043"
    ],
+   "tickets": [
+    "ASB-100",
+    "HGB-200"
+   ],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [
     "FG-1043"
    ],
@@ -41,9 +47,9 @@
    "escalation_required": false,
    "escalated": false,
    "escalation_correct": true,
-   "agent_seconds": 4.64,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
+   "agent_seconds": 0.5,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
    "known_gap": null,
    "live_agent_seconds": 4.64
   },
@@ -64,6 +70,12 @@
     "FG-1042",
     "FG-1043"
    ],
+   "tickets": [
+    "ASB-100",
+    "HGB-200"
+   ],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [
     "FG-1043"
    ],
@@ -75,9 +87,9 @@
    "escalation_required": false,
    "escalated": false,
    "escalation_correct": true,
-   "agent_seconds": 4.5,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
+   "agent_seconds": 0.438,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
    "known_gap": null,
    "live_agent_seconds": 4.5
   },
@@ -98,6 +110,12 @@
     "FG-1042",
     "FG-1043"
    ],
+   "tickets": [
+    "ASB-100",
+    "HGB-200"
+   ],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [
     "FG-1043"
    ],
@@ -109,9 +127,9 @@
    "escalation_required": false,
    "escalated": false,
    "escalation_correct": true,
-   "agent_seconds": 3.672,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
+   "agent_seconds": 0.422,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
    "known_gap": null,
    "live_agent_seconds": 3.672
   },
@@ -127,6 +145,11 @@
    "held": [
     "FG-1039"
    ],
+   "tickets": [
+    "HGB-200"
+   ],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [],
    "expected_decisions": 1,
    "correct_decisions": 1,
@@ -136,10 +159,10 @@
    "escalation_required": false,
    "escalated": false,
    "escalation_correct": true,
-   "agent_seconds": 3.969,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
-   "known_gap": "Prompt defines effective_lot as the first lot of an ongoing change; a one-off lot deviation comes back AMBIGUOUS and escalates.",
+   "agent_seconds": 0.203,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
+   "known_gap": null,
    "live_agent_seconds": 3.969
   },
   {
@@ -154,6 +177,9 @@
    "held": [
     "FG-2001"
    ],
+   "tickets": [],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [],
    "expected_decisions": 1,
    "correct_decisions": 1,
@@ -163,9 +189,9 @@
    "escalation_required": false,
    "escalated": false,
    "escalation_correct": true,
-   "agent_seconds": 3.687,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
+   "agent_seconds": 0.203,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
    "known_gap": null,
    "live_agent_seconds": 3.687
   },
@@ -182,6 +208,11 @@
    "held": [
     "FG-2101"
    ],
+   "tickets": [
+    "PCB-400"
+   ],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [],
    "expected_decisions": 2,
    "correct_decisions": 2,
@@ -191,9 +222,9 @@
    "escalation_required": false,
    "escalated": false,
    "escalation_correct": true,
-   "agent_seconds": 4.906,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
+   "agent_seconds": 0.234,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
    "known_gap": null,
    "live_agent_seconds": 4.906
   },
@@ -209,6 +240,11 @@
    "held": [
     "FG-2201"
    ],
+   "tickets": [
+    "HSN-500"
+   ],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [
     "FG-2201"
    ],
@@ -220,9 +256,9 @@
    "escalation_required": false,
    "escalated": false,
    "escalation_correct": true,
-   "agent_seconds": 3.172,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
+   "agent_seconds": 0.25,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
    "known_gap": null,
    "live_agent_seconds": 3.172
   },
@@ -239,6 +275,13 @@
    "held": [
     "FG-2301"
    ],
+   "tickets": [
+    "GFB-600"
+   ],
+   "retailer_notices": [
+    "FG-2302"
+   ],
+   "supplier_query": false,
    "removal_requested": [],
    "expected_decisions": 2,
    "correct_decisions": 2,
@@ -248,9 +291,9 @@
    "escalation_required": true,
    "escalated": true,
    "escalation_correct": true,
-   "agent_seconds": 4.468,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
+   "agent_seconds": 0.265,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
    "known_gap": null,
    "live_agent_seconds": 4.468
   },
@@ -267,6 +310,11 @@
    "held": [
     "FG-2401"
    ],
+   "tickets": [
+    "CRK-700"
+   ],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [],
    "expected_decisions": 2,
    "correct_decisions": 2,
@@ -276,9 +324,9 @@
    "escalation_required": false,
    "escalated": false,
    "escalation_correct": true,
-   "agent_seconds": 4.219,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
+   "agent_seconds": 0.219,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
    "known_gap": null,
    "live_agent_seconds": 4.219
   },
@@ -292,6 +340,9 @@
     "FG-2501": "NO_IMPACT"
    },
    "held": [],
+   "tickets": [],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [],
    "expected_decisions": 1,
    "correct_decisions": 1,
@@ -301,9 +352,9 @@
    "escalation_required": false,
    "escalated": false,
    "escalation_correct": true,
-   "agent_seconds": 7.281,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
+   "agent_seconds": 0.125,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
    "known_gap": null,
    "live_agent_seconds": 7.281
   },
@@ -317,6 +368,9 @@
     "FG-2601": "NO_IMPACT"
    },
    "held": [],
+   "tickets": [],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [],
    "expected_decisions": 1,
    "correct_decisions": 1,
@@ -326,10 +380,10 @@
    "escalation_required": false,
    "escalated": false,
    "escalation_correct": true,
-   "agent_seconds": 3.532,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
-   "known_gap": "A certificate stating the lot is soy lecithin is read as AMBIGUOUS (not worded as a change); safe escalation, false alarm.",
+   "agent_seconds": 0.156,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
+   "known_gap": null,
    "live_agent_seconds": 3.532
   },
   {
@@ -340,6 +394,9 @@
    "status": "ESCALATED",
    "decisions": {},
    "held": [],
+   "tickets": [],
+   "retailer_notices": [],
+   "supplier_query": true,
    "removal_requested": [],
    "expected_decisions": 0,
    "correct_decisions": 0,
@@ -349,9 +406,9 @@
    "escalation_required": true,
    "escalated": true,
    "escalation_correct": true,
-   "agent_seconds": 4.0,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
+   "agent_seconds": 0.093,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
    "known_gap": null,
    "live_agent_seconds": 4.0
   },
@@ -363,6 +420,9 @@
    "status": "ESCALATED",
    "decisions": {},
    "held": [],
+   "tickets": [],
+   "retailer_notices": [],
+   "supplier_query": true,
    "removal_requested": [],
    "expected_decisions": 0,
    "correct_decisions": 0,
@@ -372,9 +432,9 @@
    "escalation_required": true,
    "escalated": true,
    "escalation_correct": true,
-   "agent_seconds": 3.453,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
+   "agent_seconds": 0.141,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
    "known_gap": null,
    "live_agent_seconds": 3.453
   },
@@ -386,6 +446,9 @@
    "status": "ESCALATED",
    "decisions": {},
    "held": [],
+   "tickets": [],
+   "retailer_notices": [],
+   "supplier_query": true,
    "removal_requested": [],
    "expected_decisions": 0,
    "correct_decisions": 0,
@@ -395,9 +458,9 @@
    "escalation_required": true,
    "escalated": true,
    "escalation_correct": true,
-   "agent_seconds": 2.75,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
+   "agent_seconds": 0.093,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
    "known_gap": null,
    "live_agent_seconds": 2.75
   },
@@ -414,6 +477,9 @@
     "FG-1043": "CLAIM_CONFLICT"
    },
    "held": [],
+   "tickets": [],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [],
    "expected_decisions": 4,
    "correct_decisions": 4,
@@ -423,7 +489,7 @@
    "escalation_required": true,
    "escalated": true,
    "escalation_correct": true,
-   "agent_seconds": 0.172,
+   "agent_seconds": 0.156,
    "extraction_model": "mock:claude-opus-5-5",
    "llm": "replay",
    "known_gap": null,
@@ -446,6 +512,9 @@
     "FG-1042",
     "FG-1043"
    ],
+   "tickets": [],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [],
    "expected_decisions": 4,
    "correct_decisions": 4,
@@ -455,9 +524,9 @@
    "escalation_required": false,
    "escalated": true,
    "escalation_correct": true,
-   "agent_seconds": 5.468,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
+   "agent_seconds": 0.344,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
    "known_gap": null,
    "live_agent_seconds": 5.468
   },
@@ -478,6 +547,12 @@
     "FG-1042",
     "FG-1043"
    ],
+   "tickets": [
+    "ASB-100",
+    "HGB-200"
+   ],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [
     "FG-1043"
    ],
@@ -489,9 +564,9 @@
    "escalation_required": false,
    "escalated": false,
    "escalation_correct": true,
-   "agent_seconds": 7.937,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
+   "agent_seconds": 0.36,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
    "known_gap": null,
    "live_agent_seconds": 7.937
   },
@@ -512,6 +587,12 @@
     "FG-1042",
     "FG-1043"
    ],
+   "tickets": [
+    "ASB-100",
+    "HGB-200"
+   ],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [
     "FG-1043"
    ],
@@ -523,7 +604,7 @@
    "escalation_required": false,
    "escalated": false,
    "escalation_correct": true,
-   "agent_seconds": 0.328,
+   "agent_seconds": 0.375,
    "extraction_model": "mock:claude-opus-5-5",
    "llm": "replay",
    "known_gap": null,
@@ -543,6 +624,12 @@
     "FG-2701",
     "FG-2702"
    ],
+   "tickets": [
+    "HGB-200",
+    "OCB-100"
+   ],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [],
    "expected_decisions": 2,
    "correct_decisions": 2,
@@ -552,9 +639,9 @@
    "escalation_required": false,
    "escalated": false,
    "escalation_correct": true,
-   "agent_seconds": 4.64,
-   "extraction_model": "claude-opus-5-5",
-   "llm": "live",
+   "agent_seconds": 0.265,
+   "extraction_model": "mock:claude-opus-5-5",
+   "llm": "replay",
    "known_gap": null,
    "live_agent_seconds": 4.64
   },
@@ -575,6 +662,12 @@
     "FG-1042",
     "FG-1043"
    ],
+   "tickets": [
+    "ASB-100",
+    "HGB-200"
+   ],
+   "retailer_notices": [],
+   "supplier_query": false,
    "removal_requested": [
     "FG-1043"
    ],
@@ -586,7 +679,7 @@
    "escalation_required": true,
    "escalated": true,
    "escalation_correct": true,
-   "agent_seconds": 0.39,
+   "agent_seconds": 0.406,
    "extraction_model": "mock:claude-opus-5-5",
    "llm": "replay",
    "known_gap": null,

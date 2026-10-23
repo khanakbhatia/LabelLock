@@ -165,7 +165,7 @@ def test_running_twice_creates_no_duplicates(env):
     assert second["status"] == "AWAITING_APPROVAL"
     events = client.get(f"/api/cases/{case_id}/timeline", headers=token("priya.qa")).json()
     assert [e["kind"] for e in events].count("RUN_STARTED") == 2
-    assert [e["kind"] for e in events].count("ACTION_CREATED") == 5
+    assert [e["kind"] for e in events].count("ACTION_CREATED") == 7  # 4 holds, 1 removal, 2 relabel tickets
     assert [e["kind"] for e in events].count("EXTRACTION_COMPLETED") == 1  # extract did not repeat
 
 
@@ -217,7 +217,10 @@ def test_unrecorded_notice_escalates_without_acting(env):
     case = detail(client, token, case_id)
     assert case["status"] == "ESCALATED"
     assert "CRITICAL_FIELD_UNRESOLVED" in case["extraction"]["uncertainty_flags"]
-    assert case["actions"] == [] and case["trace"] is None
+    assert case["trace"] is None
+    # the only action is a drafted question back to the (verified) supplier, waiting for approval
+    assert [(a["type"], a["status"], a["requires_approval"]) for a in case["actions"]] == [
+        ("SEND_SUPPLIER_QUERY", "PENDING_APPROVAL", True)]
     assert set(inventory(app).values()) == {"AVAILABLE"}
 
 

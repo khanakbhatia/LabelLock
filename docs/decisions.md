@@ -150,3 +150,24 @@ No contract shape changes; every new response validates against `openapi.yaml`. 
   only S16 (injection in the PDF) is, so the hold-and-escalate policy is now pinned by a model-independent agent test.
 - `GET /scenarios` (qa_*, admin): id and notice subject only - titles and expected outcomes would give a manual
   tester the answer. `GET /demo/faults` (admin, DEMO_MODE): current fault state, via new `GET /sim/admin/faults`.
+
+## 2026-10-23 — Relabel tickets, retailer notices, supplier queries (Anvi; P1)
+
+Follows the role table: the agent may create tickets and drafts; anything sent outside the company needs a qa_manager.
+- `CREATE_RELABEL_TICKET` (no approval): one per SKU whose batches are `HOLD_RELABEL` or `CLAIM_CONFLICT` (a label is
+  per SKU), target `{sku}`, created in `/sim/tickets` during act and VERIFIED by re-reading the ticket.
+  `result = {ticket_id, summary}`. Not for `HOLD`, `UNCERTAIN_ESCALATE` or `SHIPPED_ESCALATE`.
+- `SEND_RETAILER_NOTICE` (approval): for each `SHIPPED_ESCALATE` batch on a departed/delivered shipment, target
+  `{batch_id, shipment_id, to}`. Stock removed from a shipment before departure needs no notice.
+- `SEND_SUPPLIER_QUERY` (approval): when the agent stops on a notice it cannot act on (critical field missing or
+  ambiguous, lot not found, material mismatch), target `{notice_id, to}`; `to` is the sender address for Gmail
+  notices or `supplier-portal:<supplier_id>`. Never for an unverified sender (`SUPPLIER_QUERY_SKIPPED` event):
+  replying could reach an impersonator.
+- Messages are drafted in `/sim/outbox` at once (`result = {draft_id, to, subject, body}`, so the UI can show the
+  text before approving); approving runs the agent, which sends through the adapter gate and VERIFIES status SENT
+  (`result.sent_at`). A rejected message stays a draft. All text is built from rules and case data, not the LLM.
+- Fix: a case that stopped early (escalated) skipped every later step, so approvals on it were never carried out.
+  `execute` and `verify` now always run (they only act on approved actions and re-read); a stopped case still
+  decides nothing new.
+- Eval: scenarios assert `tickets`, `retailer_notices` and `supplier_query`; 20/20 pass. The unverified-sender
+  guard is covered by pytest (no eval scenario reaches it).

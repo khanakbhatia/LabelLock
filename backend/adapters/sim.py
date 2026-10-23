@@ -209,6 +209,37 @@ class WmsClient:
                                  body={"batch_id": action.target["batch_id"]}, idem=action.idempotency_key)
 
 
+class TicketsClient:
+    def __init__(self, http: SimHttp):
+        self.http = http
+
+    def create(self, case_id: str, target: dict, summary: str) -> dict:
+        """Relabel work order: a direct write (internal, reversible), keyed like the action that asks for it."""
+        return self.http.request("tickets", "POST", "/sim/tickets", idem=idempotency_key(case_id, "CREATE_RELABEL_TICKET", target),
+                                 body={"sku": target["sku"], "summary": summary, "case_ref": case_id})
+
+    def get(self, ticket_id: str) -> dict | None:
+        return self.http.request("tickets", "GET", f"/sim/tickets/{ticket_id}", allow_404=True)
+
+
+class OutboxClient:
+    """Drafting is a direct write; sending anything outside the company needs an approved action."""
+
+    def __init__(self, http: SimHttp, gate: ApprovalGate):
+        self.http, self.gate = http, gate
+
+    def draft(self, case_id: str, action_type: str, target: dict, to: str, subject: str, body: str) -> dict:
+        return self.http.request("outbox", "POST", "/sim/outbox", idem=idempotency_key(case_id, action_type, target),
+                                 body={"to": to, "subject": subject, "body": body, "case_ref": case_id})
+
+    def send(self, action_id: str, action_type: str) -> dict:
+        action = self.gate.require_approved(action_id, action_type)
+        return self.http.request("outbox", "POST", f"/sim/outbox/{action.result['draft_id']}/send")
+
+    def get(self, message_id: str) -> dict | None:
+        return self.http.request("outbox", "GET", f"/sim/outbox/{message_id}", allow_404=True)
+
+
 class SimAdminClient:
     def __init__(self, http: SimHttp):
         self.http = http

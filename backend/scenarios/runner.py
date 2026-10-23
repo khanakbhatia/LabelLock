@@ -130,6 +130,16 @@ def score(s: dict, case: dict, inventory: dict[str, set[str]], duplicate: bool |
     not_held = sorted(set(exp.get("must_hold", [])) - verified_holds)
     if not_held:
         problems.append(f"no verified protective hold on: {not_held}")
+    tickets = sorted(a["target"]["sku"] for a in case["actions"] if a["type"] == "CREATE_RELABEL_TICKET" and a["status"] == "VERIFIED")
+    notices = sorted(a["target"]["batch_id"] for a in case["actions"] if a["type"] == "SEND_RETAILER_NOTICE"
+                     and a["status"] == "PENDING_APPROVAL" and (a["result"] or {}).get("draft_id"))
+    query = any(a["type"] == "SEND_SUPPLIER_QUERY" and (a["result"] or {}).get("draft_id") for a in case["actions"])
+    if exp.get("tickets") is not None and tickets != sorted(exp["tickets"]):
+        problems.append(f"relabel tickets {tickets} != {sorted(exp['tickets'])}")
+    if "retailer_notices" in exp and notices != sorted(exp["retailer_notices"]):
+        problems.append(f"retailer notice drafts {notices} != {sorted(exp['retailer_notices'])}")
+    if "supplier_query" in exp and query != exp["supplier_query"]:
+        problems.append(f"supplier query drafted: {query}, expected {exp['supplier_query']}")
     if exp.get("verify_failed") and not any(a["status"] == "VERIFY_FAILED" for a in case["actions"]):
         problems.append("expected a VERIFY_FAILED action")
     if exp.get("duplicate") and not (duplicate and case_count == 1):
@@ -140,6 +150,7 @@ def score(s: dict, case: dict, inventory: dict[str, set[str]], duplicate: bool |
     return {
         "id": s["id"], "title": s["title"], "passed": not problems, "problems": problems,
         "status": case["status"], "decisions": actual, "held": sorted(held),
+        "tickets": tickets, "retailer_notices": notices, "supplier_query": query,
         "removal_requested": sorted({a["target"]["batch_id"] for a in case["actions"] if a["type"] == "REMOVE_FROM_SHIPMENT"}),
         "expected_decisions": len(exp["decisions"]), "correct_decisions": correct,
         "expected_affected": len(expected_affected), "affected_found": len(found), "false_holds": len(false_holds),

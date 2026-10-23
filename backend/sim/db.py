@@ -119,8 +119,9 @@ class Ticket(SimBase):
     batch_id: Mapped[str | None] = mapped_column(String, nullable=True)
     summary: Mapped[str] = mapped_column(String)
     case_ref: Mapped[str] = mapped_column(String)
-    status: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String)  # OPEN | DONE
     created_at: Mapped[str] = mapped_column(String)
+    idempotency_key: Mapped[str] = mapped_column(String, unique=True)
 
 
 class OutboxMessage(SimBase):
@@ -132,6 +133,8 @@ class OutboxMessage(SimBase):
     case_ref: Mapped[str] = mapped_column(String)
     status: Mapped[str] = mapped_column(String)  # DRAFT | SENT
     created_at: Mapped[str] = mapped_column(String)
+    sent_at: Mapped[str | None] = mapped_column(String, nullable=True)
+    idempotency_key: Mapped[str] = mapped_column(String, unique=True)
 
 
 class Fault(SimBase):
