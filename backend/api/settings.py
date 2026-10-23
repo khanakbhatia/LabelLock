@@ -25,6 +25,11 @@ class Settings:
     upload_dir: Path = Path("./uploads")
     demo_mode: bool = False
     token_ttl_seconds: int = 12 * 3600
+    sim_database_url: str = "sqlite:///./sim.db"
+    sim_api_key: str = "dev-sim-key"
+    sim_base_url: str = "http://localhost:8000"  # where adapters reach /sim/*
+    seed_dir: Path = REPO_ROOT / "data" / "seed"
+    llm_mode: str = "mock"
 
     @property
     def cors_origins(self) -> list[str]:
@@ -41,4 +46,9 @@ class Settings:
             extension_origin=env.get("EXTENSION_ORIGIN", ""),
             upload_dir=Path(env.get("UPLOAD_DIR", str(cls.upload_dir))),
             demo_mode=env.get("DEMO_MODE", "false").lower() == "true",
+            sim_database_url=env.get("SIM_DATABASE_URL", cls.sim_database_url),
+            sim_api_key=env.get("SIM_API_KEY", cls.sim_api_key),
+            sim_base_url=env.get("SIM_BASE_URL", cls.sim_base_url),
+            seed_dir=Path(env.get("SEED_DIR", str(cls.seed_dir))),
+            llm_mode=env.get("LLM_MODE", cls.llm_mode),
         )

@@ -1,0 +1,13 @@
+{
+  "_notice": "VL-2291 lecithin change (tests/fixtures/notices). Recorded extraction for LLM_MODE=mock.",
+  "fields": {
+    "material": {"value": "Lecithin (RM-114)", "status": "FOUND", "confidence": 0.97,
+      "evidence": {"source": "attachment", "page": 1, "quote": "Product: Lecithin, code RM-114"}},
+    "new_ingredient": {"value": "soy lecithin", "status": "FOUND", "confidence": 0.95,
+      "evidence": {"source": "email", "page": null, "quote": "will be supplied as soy lecithin"}},
+    "effective_lot": {"value": "VL-2291", "status": "FOUND", "confidence": 0.99,
+      "evidence": {"source": "email", "page": null, "quote": "from lot VL-2291 onward"}},
+    "may_contain": {"value": null, "status": "MISSING", "confidence": null, "evidence": null}
+  },
+  "uncertainty_flags": []
+}

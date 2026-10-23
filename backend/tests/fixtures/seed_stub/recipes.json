@@ -1,0 +1,12 @@
+[
+  {"sku": "OCB-100", "material_id": "RM-201"},
+  {"sku": "OCB-100", "material_id": "RM-305"},
+  {"sku": "OCB-100", "material_id": "RM-114"},
+  {"sku": "HGB-200", "material_id": "RM-201"},
+  {"sku": "HGB-200", "material_id": "RM-305"},
+  {"sku": "HGB-200", "material_id": "RM-502"},
+  {"sku": "HGB-200", "material_id": "RM-114"},
+  {"sku": "ASB-100", "material_id": "RM-410"},
+  {"sku": "ASB-100", "material_id": "RM-201"},
+  {"sku": "ASB-100", "material_id": "RM-114"}
+]

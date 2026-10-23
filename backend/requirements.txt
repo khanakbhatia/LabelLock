@@ -2,9 +2,10 @@ fastapi==0.115.6
 uvicorn==0.32.1
 sqlalchemy==2.0.36
 python-multipart==0.0.20
+httpx==0.28.1
+pypdf==5.1.0
 # dev / tests
 pytest==8.3.4
-httpx==0.28.1
 pyyaml==6.0.2
 jsonschema==4.23.0
 openapi-spec-validator==0.7.1

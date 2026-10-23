@@ -1,0 +1,8 @@
+[
+  {"batch_id": "FG-1039", "location": "DC-EAST", "qty": 300, "status": "AVAILABLE"},
+  {"batch_id": "FG-1040", "location": "PLANT-1", "qty": 600, "status": "AVAILABLE"},
+  {"batch_id": "FG-1041", "location": "DC-EAST", "qty": 480, "status": "AVAILABLE"},
+  {"batch_id": "FG-1042", "location": "DC-EAST", "qty": 150, "status": "AVAILABLE"},
+  {"batch_id": "FG-1042", "location": "PLANT-1", "qty": 200, "status": "AVAILABLE"},
+  {"batch_id": "FG-1043", "location": "DC-EAST", "qty": 120, "status": "AVAILABLE"}
+]

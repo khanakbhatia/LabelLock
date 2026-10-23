@@ -1,0 +1,5 @@
+[
+  {"sku": "OCB-100", "version": "3", "ingredient_statement": "Rolled oats, honey, sunflower oil, soy lecithin.", "contains": ["soy"], "may_contain": [], "claims": []},
+  {"sku": "HGB-200", "version": "5", "ingredient_statement": "Rolled oats, honey, skim milk powder, lecithin.", "contains": ["milk"], "may_contain": [], "claims": []},
+  {"sku": "ASB-100", "version": "2", "ingredient_statement": "Sunflower seeds, rolled oats, sunflower lecithin.", "contains": [], "may_contain": [], "claims": ["free from top 9 allergens"]}
+]

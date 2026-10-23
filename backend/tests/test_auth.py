@@ -130,15 +130,20 @@ def test_cors_allows_configured_origin_only(client):
 PUBLIC_ROUTES = {"/api/health", "/api/auth/login"}
 
 
-def _uses_require_roles(dependant) -> bool:
-    return any(
-        d.call.__qualname__.startswith("require_roles.") or _uses_require_roles(d)
-        for d in dependant.dependencies
-    )
+def _uses(dependant, qualname_prefix: str) -> bool:
+    return any(d.call.__qualname__.startswith(qualname_prefix) or _uses(d, qualname_prefix) for d in dependant.dependencies)
 
 
 def test_every_non_public_route_uses_require_roles(app):
-    routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path not in PUBLIC_ROUTES]
+    routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path.startswith("/api/") and r.path not in PUBLIC_ROUTES]
     assert routes
-    missing = [r.path for r in routes if not _uses_require_roles(r.dependant)]
+    missing = [r.path for r in routes if not _uses(r.dependant, "require_roles.")]
     assert not missing, f"routes without require_roles: {missing}"
+
+
+def test_every_sim_route_requires_sim_key(app):
+    routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path.startswith("/sim/")]
+    assert routes
+    missing = [r.path for r in routes if not _uses(r.dependant, "require_sim_key")]
+    assert not missing, f"sim routes without X-Sim-Key check: {missing}"
+    assert all(isinstance(r, APIRoute) and r.path.startswith(("/api/", "/sim/")) for r in app.routes if isinstance(r, APIRoute))

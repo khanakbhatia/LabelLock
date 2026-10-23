@@ -8,10 +8,10 @@ from dataclasses import dataclass
 from email.utils import parseaddr
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from api.db import Case, Notice, NoticeAttachment, Supplier, SupplierSender, new_id, now_iso
+from api.db import Action, Case, Notice, NoticeAttachment, Supplier, SupplierSender, new_id, now_iso
 from api.errors import ApiError
 from audit import append_event
 
@@ -129,7 +129,7 @@ def case_summary(db: Session, case: Case) -> dict:
         "opened_at": case.opened_at,
         "contained_at": case.contained_at,
         "duplicate_of": case.duplicate_of,
-        # ponytail: no actions table yet (M1), so nothing can be pending; count real actions then.
-        "pending_approvals": 0,
+        "pending_approvals": db.scalar(select(func.count()).select_from(Action)
+                                       .where(Action.case_id == case.id, Action.status == "PENDING_APPROVAL")),
         "uncertainty_flags": case.uncertainty_flags,
     }

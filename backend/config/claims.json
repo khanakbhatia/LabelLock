@@ -1,0 +1,11 @@
+{
+  "claims": [
+    {"rule_id": "CLM-FREE-FROM-TOP9", "label_text": ["free from top 9 allergens", "top 9 allergen free", "free from the top 9 allergens"],
+     "broken_by": ["milk", "egg", "fish", "crustacean shellfish", "tree nuts", "peanuts", "wheat", "soy", "sesame"]},
+    {"rule_id": "CLM-DAIRY-FREE", "label_text": ["dairy-free", "dairy free", "milk-free"], "broken_by": ["milk"]},
+    {"rule_id": "CLM-SOY-FREE", "label_text": ["soy-free", "soy free"], "broken_by": ["soy"]},
+    {"rule_id": "CLM-NUT-FREE", "label_text": ["nut-free", "nut free"], "broken_by": ["peanuts", "tree nuts"]},
+    {"rule_id": "CLM-EGG-FREE", "label_text": ["egg-free", "egg free"], "broken_by": ["egg"]},
+    {"rule_id": "CLM-SESAME-FREE", "label_text": ["sesame-free", "sesame free"], "broken_by": ["sesame"]}
+  ]
+}

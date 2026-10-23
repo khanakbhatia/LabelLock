@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import Request
-from sqlalchemy import JSON, ForeignKey, Integer, String, Text, create_engine
+from sqlalchemy import JSON, Boolean, Float, ForeignKey, Integer, String, Text, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 # Times are stored as ISO-8601 UTC strings ("2026-10-23T09:00:00Z"), the contract's format.
@@ -89,6 +89,71 @@ class Case(Base):
     opened_at: Mapped[str] = mapped_column(String)
     contained_at: Mapped[str | None] = mapped_column(String, nullable=True)
     closed_at: Mapped[str | None] = mapped_column(String, nullable=True)
+    # agent run state: {step: DONE | STOPPED}; a second run resumes from here
+    steps: Mapped[dict] = mapped_column(JSON, default=dict)
+    running_run_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    agent_started_at: Mapped[str | None] = mapped_column(String, nullable=True)
+    elapsed_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class Extraction(Base):
+    __tablename__ = "extractions"
+
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id"), primary_key=True)
+    fields: Mapped[dict] = mapped_column(JSON)
+    allergens_added: Mapped[list] = mapped_column(JSON)
+    uncertainty_flags: Mapped[list] = mapped_column(JSON)
+    model: Mapped[str] = mapped_column(String)
+    prompt_version: Mapped[str] = mapped_column(String)
+
+
+class TraceResult(Base):
+    __tablename__ = "trace_results"
+
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id"), primary_key=True)
+    material_lot_ids: Mapped[list] = mapped_column(JSON)
+    batch_ids: Mapped[list] = mapped_column(JSON)
+    graph: Mapped[dict] = mapped_column(JSON)  # {"batches": [contract TraceBatch], "labels": {sku: label}, "shipment_status": {id: status}}
+    gaps: Mapped[list] = mapped_column(JSON)
+
+
+class BatchDecision(Base):
+    __tablename__ = "batch_decisions"
+
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id"), primary_key=True)
+    batch_id: Mapped[str] = mapped_column(String, primary_key=True)
+    decision: Mapped[str] = mapped_column(String)
+    rule_ids: Mapped[list] = mapped_column(JSON)
+    uncertainty_flags: Mapped[list] = mapped_column(JSON)
+    rationale: Mapped[str] = mapped_column(Text)
+
+
+class Action(Base):
+    __tablename__ = "actions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id"), index=True)
+    type: Mapped[str] = mapped_column(String)
+    target: Mapped[dict] = mapped_column(JSON)
+    status: Mapped[str] = mapped_column(String)
+    requires_approval: Mapped[bool] = mapped_column(Boolean)
+    # hash(case_id, type, target): one action per target, however often the agent runs
+    idempotency_key: Mapped[str] = mapped_column(String, unique=True)
+    requested_by: Mapped[str] = mapped_column(String)
+    result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[str] = mapped_column(String)
+
+
+class Verification(Base):
+    __tablename__ = "verifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    action_id: Mapped[str] = mapped_column(ForeignKey("actions.id"), index=True)
+    attempt: Mapped[int] = mapped_column(Integer)
+    expected: Mapped[dict] = mapped_column(JSON)
+    observed: Mapped[dict] = mapped_column(JSON)
+    passed: Mapped[bool] = mapped_column(Boolean)
+    checked_at: Mapped[str] = mapped_column(String)
 
 
 class AuditEvent(Base):
