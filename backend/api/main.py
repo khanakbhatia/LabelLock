@@ -42,6 +42,9 @@ def seed_dev_data(sessionmaker) -> None:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
+    if not settings.demo_mode and settings.insecure_defaults():
+        raise RuntimeError(f"Refusing to start: set {' and '.join(settings.insecure_defaults())} "
+                           "(the shipped development values are only allowed with DEMO_MODE=true)")
     app = FastAPI(title="LabelLock API", version="0.1.0")
     app.state.settings = settings
     app.state.sessionmaker = make_sessionmaker(settings.database_url)

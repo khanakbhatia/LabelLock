@@ -17,7 +17,7 @@ from api.db import (
 )
 from api.errors import ApiError
 from api.notices import case_summary
-from audit import append_event
+from audit import append_event, verify_chain
 from rules import AFFECTED
 
 router = APIRouter(prefix="/api")
@@ -107,6 +107,12 @@ def timeline(case_id: str, user: User = Depends(require_roles(*CASE_READERS)), d
     events = db.scalars(select(AuditEvent).where(AuditEvent.case_id == case_id).order_by(AuditEvent.id))
     return [{"id": f"e_{e.id:06d}", "case_id": e.case_id, "ts": e.ts, "actor": e.actor, "kind": e.kind,
              "payload": e.payload, "prev_hash": e.prev_hash, "hash": e.hash} for e in events]
+
+
+@router.get("/cases/{case_id}/audit/verify")
+def verify_timeline(case_id: str, user: User = Depends(require_roles(*CASE_READERS)), db: Session = Depends(get_db)):
+    get_case(db, case_id)
+    return verify_chain(list(db.scalars(select(AuditEvent).where(AuditEvent.case_id == case_id).order_by(AuditEvent.id))))
 
 
 @router.get("/cases/{case_id}/report")

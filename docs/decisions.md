@@ -171,3 +171,13 @@ Follows the role table: the agent may create tickets and drafts; anything sent o
   decides nothing new.
 - Eval: scenarios assert `tickets`, `retailer_notices` and `supplier_query`; 20/20 pass. The unverified-sender
   guard is covered by pytest (no eval scenario reaches it).
+
+## 2026-10-24 — Governance fixes from the judge-style audit (Anvi)
+
+- `GET /cases/{id}/audit/verify` (qa_*, shipping_supervisor): recomputes the case's hash chain oldest first and returns
+  `{valid, events, first_invalid_event_id}`. Contract: new schema `AuditVerification`, example `audit_verification.json`.
+  The case timeline shows the result. Demo reset still deletes audit events (it deletes the cases too).
+- The `agent` service account can no longer sign in: `POST /auth/login` returns 403 `FORBIDDEN` (contract: 403 added).
+  The account still exists for attribution; the agent acts in-process.
+- The backend refuses to start with the shipped `AUTH_SECRET` or `SIM_API_KEY` unless `DEMO_MODE=true`.
+- ROI defaults are labelled as unsourced illustrative placeholders in `roi_assumptions.json` and on the ROI page.
