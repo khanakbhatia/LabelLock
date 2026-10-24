@@ -1,12 +1,12 @@
 import type { Director } from '../lib/overlay.ts';
 import { approvals, rawCall } from '../lib/api.ts';
-import { APP, analysedCase, signedIn, tab } from '../lib/flows.ts';
+import { analysedCase, signedIn } from '../lib/flows.ts';
 
 export const setup = analysedCase;
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
-export default async function (d: Director, { caseId }: Record<string, string>) {
+export default async function (d: Director) {
   const p = d.page;
   await signedIn(d, 'priya.qa', '/approvals');
   await d.caption('07a', async () => {
@@ -35,22 +35,6 @@ export default async function (d: Director, { caseId }: Record<string, string>) 
       <pre id="resp">${esc(body)}</pre></body></html>`);
     await d.hold(300);
     await d.spotlight(p.locator('#resp'), 'The real server response');
-    await d.hold(3000);
-    await d.clearSpotlight();
-  });
-  await d.caption('07c', async () => {
-    await p.goto(`${APP}/inbox`);  // back to the app (still signed in as priya.qa), then sign out properly
-    await d.logout();
-    await d.login('marco.ship');
-    await p.goto(`${APP}/cases/${caseId}`);
-    await tab(d, 'Actions');
-    const reason = p.locator('#release-reason-FG-1041');
-    await d.scrollTo(reason);
-    await d.type(reason, 'Relabelled, ready to ship');
-    await d.click(reason.locator('xpath=following-sibling::button'));
-    const refusal = p.getByRole('alert').filter({ hasText: 'POLICY_VIOLATION' });
-    await refusal.waitFor();
-    await d.spotlight(refusal, 'Refused by policy');
     await d.hold(3000);
     await d.clearSpotlight();
   });

@@ -27,7 +27,7 @@ export default async function (d: Director, { caseId }: Record<string, string>) 
     await d.click(p.getByRole('link', { name: 'ROI' }));
     const measured = p.getByRole('region', { name: 'Measured results' });
     await measured.waitFor();
-    await d.spotlight(measured, 'MEASURED · 20 test scenarios');
+    await d.spotlight(measured, 'Agent median vs one timed manual run');
     await d.hold(3000);
   });
   await d.caption('11c', async () => {
