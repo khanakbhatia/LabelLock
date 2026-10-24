@@ -14,7 +14,6 @@ Northfield Snacks and its suppliers, products, batches and enterprise systems ar
 ## Submission
 
 - **Repository:** https://github.com/khanakbhatia/LabelLock
-- **Final commit SHA:** `ff28bc682a434c8d2767e5d0290f00598e12c14b` (merge of PR #14 on `main`; any later commit only updates this line and changes no code)
 - **Demo video:** act two is recorded from the running product by `demo/`. See [Demo video](#demo-video).
 
 ## Repository layout
