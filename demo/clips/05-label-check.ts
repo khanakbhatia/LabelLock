@@ -8,7 +8,6 @@ export default async function (d: Director, { caseId }: Record<string, string>) 
   await openCase(d, 'priya.qa', caseId);
   await tab(d, 'Label Check');
   const card = (b: string) => p.getByRole('tabpanel').locator('article').filter({ has: p.getByRole('heading', { name: b }) });
-  await d.caption('05a', async () => { await d.spotlight(card('FG-1040'), 'NO IMPACT · no action'); await d.hold(3000); });
-  await d.caption('05b', async () => { await d.spotlight(card('FG-1041'), 'HOLD + RELABEL'); await d.hold(3000); });
-  await d.caption('05c', async () => { await d.spotlight(card('FG-1043'), 'CLAIM CONFLICT'); await d.hold(3000); await d.clearSpotlight(); });
+  await d.caption('05a', async () => { await d.spotlight(card('FG-1041'), 'HOLD + RELABEL'); await d.hold(3000); });
+  await d.caption('05b', async () => { await d.spotlight(card('FG-1043'), 'CLAIM CONFLICT'); await d.hold(3000); await d.clearSpotlight(); });
 }
