@@ -13,7 +13,8 @@ const manifest = JSON.parse(await readFile(resolve(extensionDir, 'manifest.json'
 manifest.host_permissions = ['https://mail.google.com/*', 'https://gmail.googleapis.com/*', `${origin}/*`];
 manifest.oauth2.client_id = process.env.EXT_OAUTH_CLIENT_ID || manifest.oauth2.client_id;
 if (!process.env.EXT_OAUTH_CLIENT_ID) console.warn('EXT_OAUTH_CLIENT_ID is unset. The bundle builds, but Gmail sign-in needs Anvi’s Chrome extension OAuth client ID.');
-const vite = spawnSync(resolve(frontendDir, 'node_modules/.bin/vite'), ['build', '--mode', 'panel'], {
+// run vite's JS entry with node: node_modules/.bin/vite is a shell script that Windows cannot spawn directly
+const vite = spawnSync(process.execPath, [resolve(frontendDir, 'node_modules/vite/bin/vite.js'), 'build', '--mode', 'panel'], {
   cwd: frontendDir, stdio: 'inherit', env: { ...process.env, VITE_APP_MODE: 'panel', VITE_USE_MOCKS: 'false', VITE_API_BASE_URL: apiBase },
 });
 if (vite.status !== 0) process.exit(vite.status || 1);
