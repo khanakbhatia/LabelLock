@@ -181,3 +181,4 @@ Follows the role table: the agent may create tickets and drafts; anything sent o
   The account still exists for attribution; the agent acts in-process.
 - The backend refuses to start with the shipped `AUTH_SECRET` or `SIM_API_KEY` unless `DEMO_MODE=true`.
 - ROI defaults are labelled as unsourced illustrative placeholders in `roi_assumptions.json` and on the ROI page.
+- Demo reset keeps `benchmarks`: they are the measured ROI baseline, not demo state.

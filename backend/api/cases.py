@@ -12,7 +12,7 @@ from adapters.sim import SimAdminClient, SimHttp, idempotency_key
 from agent.orchestrator import AGENT, CaseRun, parse_iso, run_case
 from api.auth import require_roles
 from api.db import (
-    Action, Approval, AuditEvent, Benchmark, BatchDecision, Case, Disposition, Extraction, Notice, NoticeAttachment, Supplier,
+    Action, Approval, AuditEvent, BatchDecision, Case, Disposition, Extraction, Notice, NoticeAttachment, Supplier,
     TraceResult, User, Verification, get_db, new_id, now_iso,
 )
 from api.errors import ApiError
@@ -333,7 +333,8 @@ def demo_faults(body: DemoFaults, request: Request, user: User = Depends(require
 @router.post("/demo/reset")
 def demo_reset(request: Request, user: User = Depends(require_roles("admin")), db: Session = Depends(get_db)):
     sim_admin(request).reset()
-    for model in (Benchmark, Approval, Disposition, Verification, Action, BatchDecision, TraceResult, Extraction, AuditEvent, Case, NoticeAttachment, Notice):
+    # benchmarks are measurements (the ROI baseline), not demo state, so a reset keeps them
+    for model in (Approval, Disposition, Verification, Action, BatchDecision, TraceResult, Extraction, AuditEvent, Case, NoticeAttachment, Notice):
         db.execute(delete(model))
     db.commit()
     return {"ok": True}

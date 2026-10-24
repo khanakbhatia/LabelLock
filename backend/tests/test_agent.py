@@ -274,8 +274,11 @@ def test_demo_controls_need_demo_mode_and_reset_clears_cases(env, tmp_path):
     app, client, token = env
     case_id = submit(client, token)
     run(client, token, case_id)
+    bench = {"scenario_id": "S01", "mode": "manual", "seconds": 600, "batches_found": 3, "false_holds": 0, "operator": "khanak"}
+    assert client.post("/api/benchmarks", json=bench, headers=token("priya.qa")).status_code == 201
     assert client.post("/api/demo/reset", headers=token("admin")).json() == {"ok": True}
     assert client.get("/api/cases", headers=token("priya.qa")).json() == []
+    assert client.get("/api/metrics/roi", headers=token("priya.qa")).json()["measured"]["manual_runs"] == 1
     assert set(inventory(app).values()) == {"AVAILABLE"}
 
     app.state.settings = Settings(**{**app.state.settings.__dict__, "demo_mode": False})
