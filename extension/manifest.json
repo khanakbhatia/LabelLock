@@ -7,7 +7,7 @@
   "permissions": ["sidePanel", "identity", "storage"],
   "host_permissions": ["https://mail.google.com/*", "https://gmail.googleapis.com/*", "http://localhost:8000/*"],
   "oauth2": {
-    "client_id": "REPLACE_WITH_EXT_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+    "client_id": "1004816944321-h8p5u1g2it8sj8akjojaps90k31fd1f7.apps.googleusercontent.com",
     "scopes": ["https://www.googleapis.com/auth/gmail.readonly"]
   },
   "side_panel": { "default_path": "panel.html" },
