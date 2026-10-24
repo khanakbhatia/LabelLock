@@ -29,7 +29,7 @@ Northfield Snacks and its suppliers, products, batches and enterprise systems ar
 
 ## Setup
 
-Requirements: Python 3.13, Node 22, Git Bash or any POSIX shell (the commands below use Windows venv paths; on macOS/Linux use `.venv/bin/python`).
+Requirements: Python 3.13 and Node 22. The commands below are for Git Bash or another POSIX shell. They use Windows venv paths; on macOS/Linux use `.venv/bin/python`. In PowerShell, `VAR=value command` does not work: set the variable first (`$env:DEMO_MODE = 'true'`), then run the command.
 
 ### 1. Environment
 
@@ -48,7 +48,9 @@ python -m venv .venv
 DEMO_MODE=true .venv/Scripts/python -m uvicorn api.main:create_app --factory --port 8000
 ```
 
-The simulated systems are served by the same process under `/sim`, seeded with the Northfield demo data (lot VL-2291, four batches, shipment L-552).
+The simulated systems are served by the same process under `/sim`. They load a small stub dataset from `backend/tests/fixtures/seed_stub/`: 9 products, 17 batches and 3 shipments, including lot VL-2291, its four batches and shipment L-552. The larger Northfield dataset (`/data/seed`) is not in the repository yet, so the backend logs `Seed dir … missing … using stub` at startup. That warning is expected.
+
+The backend's adapters call `/sim` over HTTP at `SIM_BASE_URL` (default `http://localhost:8000`). If you run the backend on another port, set `SIM_BASE_URL` to the same port. Otherwise the adapters reach whatever else is listening on 8000.
 
 ### 3. Frontend (port 5173)
 
@@ -75,19 +77,23 @@ Open http://localhost:5173 and sign in with any demo user. Every password is `de
 2. As `priya.qa`, open it from the QA inbox and click **Run agent**.
 3. As `daniel.qam`, approve the shipment removal under **Approvals**.
 
-**Settings → Demo controls** (as `admin`) resets the data. It also turns on a test fault where the warehouse silently fails to apply holds, and LabelLock catches it. The full curl walkthrough is in [docs/demo-m1.md](docs/demo-m1.md).
+**Settings → Demo controls** (as `admin`) resets the data. It also turns on a test fault where the warehouse silently fails to apply holds, and LabelLock catches it.
+
+Reset before every scenario. Holds are shared physical state in the simulated warehouse, so a second case on the same lot finds the stock already HELD by the first and verifies it as held. Also check that the fault switch is off unless the scenario needs it. The full curl walkthrough is in [docs/demo-m1.md](docs/demo-m1.md).
 
 ### 5. Gmail extension (optional)
 
-The extension needs a Chrome OAuth client ID. See [docs/extension-manual-test.md](docs/extension-manual-test.md).
+Build it with `cd frontend && npm run build:panel`, then load `extension/dist` unpacked in Chrome. Gmail sign-in needs the Chrome extension OAuth client ID in `extension/manifest.json` and `EXTENSION_ORIGIN` in `.env`. See [extension/README.md](extension/README.md) and the manual test in [docs/extension-manual-test.md](docs/extension-manual-test.md).
 
 ## Tests and evaluation
 
 ```bash
 cd backend && .venv/Scripts/python -m pytest          # backend unit and API tests
-cd backend && .venv/Scripts/python -m scenarios.runner # 20-scenario eval through the real API (mock mode, free)
+cd backend && .venv/Scripts/python -m scenarios.runner # 20-scenario eval through the real API (replayed extractions, free)
 cd frontend && npm test                                 # frontend tests
 ```
+
+The 20 scenarios in `backend/scenarios/` are written by the team and run against the stub dataset. Their extractions were recorded once from live Claude and are replayed, so the eval is deterministic and free. Its scores measure accuracy on our own test set, not performance in the field. Agent timings come only from the live recording runs.
 
 Eval results are served at `GET /api/metrics/roi` and on the ROI page. On the ROI page, measured results are shown separately from editable assumptions.
 
