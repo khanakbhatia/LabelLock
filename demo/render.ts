@@ -9,7 +9,7 @@
  */
 import { chromium } from 'playwright';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import ffmpegPath from 'ffmpeg-static';
 import { loadCaptions, type Caption } from './lib/overlay.ts';
@@ -37,7 +37,7 @@ const tc = (s: number, sep = ',') => {
 const short = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`;
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
-const clips = readdirSync(`${OUT}clips`).filter(f => f.endsWith('.mp4')).sort();
+const clips = readdirSync(`${OUT}clips`).filter(f => f.endsWith('.mp4') && existsSync(new URL(`./clips/${f.replace('.mp4', '.ts')}`, import.meta.url))).sort();
 if (!clips.length) throw new Error('no recorded clips in output/clips - run npm run demo:record first');
 const captions = loadCaptions();
 const missing = captions.filter(c => c.start == null && clips.some(f => f.startsWith(c.clip)));

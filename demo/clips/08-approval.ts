@@ -10,14 +10,14 @@ export default async function (d: Director, { caseId }: Record<string, string>) 
   await d.caption('08a', async () => {
     const card = p.getByRole('region').filter({ hasText: 'Remove FG-1043 from shipment L-552' });
     await d.spotlight(card, 'Restricted action');
-    await d.hold(1500);
+    await d.hold(1000);
     await d.clearSpotlight();
     await d.click(card.getByRole('button', { name: 'Approve' }));
     const dialog = p.getByRole('dialog');
     await d.type(dialog.getByLabel('Comment (optional)'), 'Trace checked. Pull FG-1043 from L-552.');
     await d.click(dialog.getByRole('button', { name: 'Confirm approve' }));
     await card.getByText('APPROVED').first().waitFor();
-    await d.hold(1500);
+    await d.hold(600);
   });
   await d.caption('08b', async () => {
     for (let i = 0; i < 40 && (await getCase(caseId)).status !== 'CONTAINED'; i++) await d.hold(500);

@@ -33,9 +33,9 @@ export default async function (d: Director, { caseId }: Record<string, string>) 
       <div class="req">POST ${esc(path)}</div>
       <div class="st">HTTP ${res.status} ${esc(res.statusText)}</div>
       <pre id="resp">${esc(body)}</pre></body></html>`);
-    await d.hold(700);
+    await d.hold(300);
     await d.spotlight(p.locator('#resp'), 'The real server response');
-    await d.hold(3200);
+    await d.hold(3000);
     await d.clearSpotlight();
   });
   await d.caption('07c', async () => {
@@ -51,7 +51,7 @@ export default async function (d: Director, { caseId }: Record<string, string>) 
     const refusal = p.getByRole('alert').filter({ hasText: 'POLICY_VIOLATION' });
     await refusal.waitFor();
     await d.spotlight(refusal, 'Refused by policy');
-    await d.hold(3200);
+    await d.hold(3000);
     await d.clearSpotlight();
   });
 }

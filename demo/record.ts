@@ -56,7 +56,7 @@ for (const file of files) {
       await capture.start(page);
       const d = new Director(page, id);
       await clip.default(d, ctxData);
-      await d.hold(600);
+      await d.hold(400);
       const endMs = Date.now(), scriptSeconds = (endMs - d.t0) / 1000;
       await capture.stop();
       await context.close();

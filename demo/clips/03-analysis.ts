@@ -11,7 +11,6 @@ export default async function (d: Director, { caseId }: Record<string, string>) 
     await d.click(p.getByRole('button', { name: 'Run agent' }));
     await p.getByText(/Agent finished/).waitFor({ timeout: 90000 });
     assertGolden(await getCase(caseId));
-    await d.hold(1500);
   });
   const panel = p.getByRole('tabpanel');
   await d.caption('03b', async () => {

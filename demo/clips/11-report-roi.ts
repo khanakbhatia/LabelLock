@@ -1,8 +1,15 @@
 import type { Director } from '../lib/overlay.ts';
-import { setup as containedCase } from './10-audit.ts';
-import { openCase } from '../lib/flows.ts';
+import { approvals, approve, getCase } from '../lib/api.ts';
+import { analysedCase, openCase } from '../lib/flows.ts';
 
-export const setup = containedCase;
+/** A contained case: analysed live, removal approved by the QA manager through the API. */
+export async function setup() {
+  const { caseId } = await analysedCase();
+  const [removal] = await approvals();
+  await approve(removal.id, 'Trace checked. Pull FG-1043 from L-552.');
+  for (let i = 0; i < 40 && (await getCase(caseId)).status !== 'CONTAINED'; i++) await new Promise(r => setTimeout(r, 500));
+  return { caseId };
+}
 
 export default async function (d: Director, { caseId }: Record<string, string>) {
   const p = d.page;

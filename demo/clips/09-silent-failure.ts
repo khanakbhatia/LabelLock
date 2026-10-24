@@ -11,10 +11,10 @@ export default async function (d: Director, { caseId }: Record<string, string>) 
     const sw = p.getByRole('switch', { name: 'WMS silently fails holds' });
     await sw.waitFor();
     await d.spotlight(sw, 'Test fault, injected by us');
-    await d.hold(1200);
+    await d.hold(800);
     await d.click(sw);
     await p.waitForFunction(() => document.querySelector('[role=switch]')?.getAttribute('aria-checked') === 'true');
-    await d.hold(2000);
+    await d.hold(1800);
     await d.clearSpotlight();
   });
   await d.caption('09b', async () => {

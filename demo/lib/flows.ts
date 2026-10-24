@@ -14,7 +14,7 @@ export async function signedIn(d: Director, user: string, path: string) {
   await d.page.goto(`${APP}${path}`);
   await d.page.waitForLoadState('networkidle');
   d.start();
-  await d.hold(700);
+  await d.hold(400);
 }
 
 export async function openCase(d: Director, user: string, caseId: string) {

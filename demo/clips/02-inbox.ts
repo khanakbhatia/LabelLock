@@ -11,7 +11,7 @@ export default async function (d: Director, { caseId }: Record<string, string>) 
   await d.caption('02a', async () => {
     await d.login('priya.qa');
     await p.getByText(NOTICE.subject).first().waitFor();
-    await d.hold(800);
+    await d.hold(400);
     await d.spotlight(p.locator('tr, li, article').filter({ hasText: NOTICE.subject }).first(), 'New notice · RECEIVED');
     await d.hold(3000);
     await d.clearSpotlight();
@@ -20,6 +20,5 @@ export default async function (d: Director, { caseId }: Record<string, string>) 
     await d.click(p.getByText(NOTICE.subject).first());
     await p.waitForURL(`**/cases/${caseId}`);
     await p.getByRole('tablist', { name: 'Case views' }).waitFor();
-    await d.hold(2000);
   });
 }

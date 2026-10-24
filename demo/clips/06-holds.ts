@@ -30,9 +30,9 @@ export default async function (d: Director, { caseId }: Record<string, string>) 
       <h1>Warehouse stock record for batch FG-1041</h1>
       <div class="req">GET ${url.replace(SIM, '/sim')}</div><div class="st">HTTP ${res.status}</div>
       <pre id="resp">${body.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre></body></html>`);
-    await d.hold(600);
+    await d.hold(300);
     await d.spotlight(p.locator('#resp'), 'status: HELD, in the warehouse system');
-    await d.hold(3500);
+    await d.hold(3000);
     await d.clearSpotlight();
   });
   await d.caption('06c', async () => {
