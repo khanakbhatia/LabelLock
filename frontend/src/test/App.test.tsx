@@ -21,10 +21,19 @@ describe('role routing', () => {
   it.each([
     ['valley.ingredients', 'Supplier portal'], ['priya.qa', 'QA inbox'],
     ['daniel.qam', 'QA inbox'], ['marco.ship', 'Cases'],
-    ['admin', 'Settings'], ['labellock-agent', 'Service account'],
+    ['admin', 'Settings'],
   ])('%s opens %s', async (username, heading) => {
     start(); await signIn(username);
     expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
+  });
+
+  it('refuses sign-in for the agent service account', async () => {
+    start();
+    await userEvent.type(await screen.findByLabelText('Username'), 'labellock-agent');
+    await userEvent.type(screen.getByLabelText('Password'), 'demo');
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    expect(screen.queryByRole('button', { name: /labellock-agent/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Service accounts cannot sign in');
   });
 
   it('blocks a supplier who opens the QA inbox', async () => {

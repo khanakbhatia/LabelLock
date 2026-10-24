@@ -35,6 +35,7 @@ export const client: LabelLockApi = {
   getCase: (token, id) => request(`/cases/${encodeURIComponent(id)}`, token),
   listCases: token => request('/cases', token),
   getTimeline: (token, id) => request(`/cases/${encodeURIComponent(id)}/timeline`, token),
+  verifyTimeline: (token, id) => request(`/cases/${encodeURIComponent(id)}/audit/verify`, token),
   getReport: (token, id) => request(`/cases/${encodeURIComponent(id)}/report`, token),
   runCase: (token, id) => request(`/cases/${encodeURIComponent(id)}/run`, token, { method: 'POST' }),
   listApprovals: (token, status) => request(`/approvals${status ? `?status=${encodeURIComponent(status)}` : ''}`, token),

@@ -22,6 +22,7 @@ EXAMPLES = {
     "case_detail.json": "CaseDetail",
     "approvals.json": ("array", "Action"),
     "timeline.json": ("array", "AuditEvent"),
+    "audit_verification.json": "AuditVerification",
     "case_report.json": "CaseReport",
     "error_forbidden.json": "Error",
     "error_policy_violation.json": "Error",

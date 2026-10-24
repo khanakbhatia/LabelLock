@@ -1,5 +1,5 @@
 {
-  "note": "Editable inputs shown beside measured results, never presented as results. Change them per customer.",
+  "note": "Editable inputs shown beside measured results, never presented as results. The default values are unsourced illustrative placeholders: replace them with the customer's own figures.",
   "assumptions": [
     {"key": "qa_hourly_cost", "label": "Loaded cost of a QA specialist hour", "value": 55, "unit": "USD/hour"},
     {"key": "change_notices_per_month", "label": "Supplier change notices handled per month", "value": 30, "unit": "notices/month"},

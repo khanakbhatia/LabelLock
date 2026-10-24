@@ -29,7 +29,7 @@ paths:
   /auth/login:
     post:
       summary: Log in
-      description: "Roles: anyone (no token)."
+      description: "Roles: anyone (no token). The agent service account cannot sign in (403)."
       security: []
       x-roles: [anyone]
       requestBody:
@@ -44,6 +44,7 @@ paths:
             application/json:
               schema: {$ref: "#/components/schemas/LoginResponse"}
         "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
         "422": {$ref: "#/components/responses/ValidationError"}
 
   /auth/me:
@@ -267,6 +268,22 @@ paths:
               schema:
                 type: array
                 items: {$ref: "#/components/schemas/AuditEvent"}
+        "401": {$ref: "#/components/responses/Unauthenticated"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /cases/{id}/audit/verify:
+    get:
+      summary: Verify the case's audit hash chain
+      description: "Roles: qa_specialist, qa_manager, shipping_supervisor. Recomputes every event hash, oldest first."
+      x-roles: [qa_specialist, qa_manager, shipping_supervisor]
+      parameters: [{$ref: "#/components/parameters/Id"}]
+      responses:
+        "200":
+          description: Chain check result
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AuditVerification"}
         "401": {$ref: "#/components/responses/Unauthenticated"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
@@ -946,6 +963,14 @@ components:
         payload: {type: object}
         prev_hash: {type: [string, "null"]}
         hash: {type: string}
+    AuditVerification:
+      type: object
+      additionalProperties: false
+      required: [valid, events, first_invalid_event_id]
+      properties:
+        valid: {type: boolean}
+        events: {type: integer, minimum: 0}
+        first_invalid_event_id: {type: [string, "null"], description: "First event whose hash or link does not match"}
     ReportBatch:
       type: object
       additionalProperties: false

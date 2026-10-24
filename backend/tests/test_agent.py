@@ -125,6 +125,25 @@ def test_golden_path(env):
     assert [e["payload"]["to"] for e in events if e["kind"] == "STATUS_CHANGED"] == ["ANALYZING", "AWAITING_APPROVAL"]
 
 
+def test_audit_chain_verifies_and_detects_tampering(env):
+    app, client, token = env
+    case_id = submit(client, token)
+    run(client, token, case_id)
+    url = f"/api/cases/{case_id}/audit/verify"
+    ok = client.get(url, headers=token("marco.ship")).json()
+    assert_matches("AuditVerification", ok)
+    assert ok["valid"] and ok["events"] > 10 and ok["first_invalid_event_id"] is None
+    assert_error(client.get(url, headers=token("valley.ingredients")), 403, "FORBIDDEN")
+
+    with app.state.sessionmaker() as db:
+        event = db.scalars(select(AuditEvent).where(AuditEvent.case_id == case_id).order_by(AuditEvent.id)).all()[3]
+        event.payload = {**event.payload, "edited": True}
+        db.commit()
+        tampered = f"e_{event.id:06d}"
+    bad = client.get(url, headers=token("priya.qa")).json()
+    assert bad == {"valid": False, "events": ok["events"], "first_invalid_event_id": tampered}
+
+
 def test_fault_switch_ends_escalated_never_contained(env):
     app, client, token = env
     assert client.put("/api/demo/faults", json={"wms_silent_hold_failure": True}, headers=token("admin")).json() == {"ok": True}
@@ -255,8 +274,11 @@ def test_demo_controls_need_demo_mode_and_reset_clears_cases(env, tmp_path):
     app, client, token = env
     case_id = submit(client, token)
     run(client, token, case_id)
+    bench = {"scenario_id": "S01", "mode": "manual", "seconds": 600, "batches_found": 3, "false_holds": 0, "operator": "khanak"}
+    assert client.post("/api/benchmarks", json=bench, headers=token("priya.qa")).status_code == 201
     assert client.post("/api/demo/reset", headers=token("admin")).json() == {"ok": True}
     assert client.get("/api/cases", headers=token("priya.qa")).json() == []
+    assert client.get("/api/metrics/roi", headers=token("priya.qa")).json()["measured"]["manual_runs"] == 1
     assert set(inventory(app).values()) == {"AVAILABLE"}
 
     app.state.settings = Settings(**{**app.state.settings.__dict__, "demo_mode": False})

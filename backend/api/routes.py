@@ -43,6 +43,8 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     ok = verify_password(body.password, user.password_hash if user else _DUMMY_HASH)
     if not (user and ok):
         raise ApiError(401, "UNAUTHENTICATED", "Invalid username or password")
+    if user.role == "agent":  # the agent acts in-process; its account exists for attribution, not for sign-in
+        raise ApiError(403, "FORBIDDEN", "Service accounts cannot sign in")
     settings = request.app.state.settings
     return {"token": make_token(user.id, settings.auth_secret, settings.token_ttl_seconds), "user": user_out(user)}
 

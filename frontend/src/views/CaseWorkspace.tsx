@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api, ApiError, type AuditEvent, type CaseDetail, type CaseReport, type Extraction, type Trace } from '../api';
+import { api, ApiError, type AuditEvent, type AuditVerification, type CaseDetail, type CaseReport, type Extraction, type Trace } from '../api';
 import { useAuth } from '../auth';
 import { Chip, flagLabel, formatTime } from './caseDisplay';
 import { ApprovalDecision, describeAction } from './ApprovalDecision';
@@ -42,6 +42,7 @@ export function CaseWorkspace() {
   const [tab, setTab] = useState<Tab>('Analysis');
   const [events, setEvents] = useState<AuditEvent[] | null>(null);
   const [timelineError, setTimelineError] = useState('');
+  const [chain, setChain] = useState<AuditVerification | null>(null);
   const [report, setReport] = useState<CaseReport | null>(null);
   const [reportError, setReportError] = useState('');
   const [polling, setPolling] = useState(false);
@@ -85,7 +86,7 @@ export function CaseWorkspace() {
     }, 1000);
     return () => { active = false; window.clearInterval(timer); };
   }, [approvalPoll, id, token]);
-  const loadTimeline = useCallback(async () => { if (!token) return; setTimelineError(''); try { setEvents(await api.getTimeline(token, id)); } catch (reason) { setTimelineError(messageFor(reason, 'Could not load timeline.')); } }, [id, token]);
+  const loadTimeline = useCallback(async () => { if (!token) return; setTimelineError(''); try { setEvents(await api.getTimeline(token, id)); setChain(await api.verifyTimeline(token, id).catch(() => null)); } catch (reason) { setTimelineError(messageFor(reason, 'Could not load timeline.')); } }, [id, token]);
   useEffect(() => { if (tab === 'Timeline' && events === null) void loadTimeline(); }, [tab, events, loadTimeline]);
   async function run() {
     if (!token) return;
@@ -118,7 +119,7 @@ export function CaseWorkspace() {
         {tab === 'Batch Detective' && <Detective trace={caseInfo.trace} />}
         {tab === 'Label Check' && (caseInfo.batch_decisions.length ? <div className={styles.grid}>{caseInfo.batch_decisions.map(row => <article key={row.batch_id} className={styles.batch}><h3>{row.batch_id}</h3><Chip tone={['NO_IMPACT', 'NOT_IN_SCOPE'].includes(row.decision) ? 'good' : ['SHIPPED_ESCALATE', 'UNCERTAIN_ESCALATE'].includes(row.decision) ? 'danger' : 'warning'}>{label(row.decision)}{['NO_IMPACT', 'NOT_IN_SCOPE'].includes(row.decision) ? ' · no action' : ''}</Chip><p>{row.rationale}</p><p>Rules: {row.rule_ids.join(', ') || 'None'}</p>{row.uncertainty_flags?.map(flag => <Chip tone="warning" key={flag}>{flagLabel(flag)}</Chip>)}</article>)}</div> : <p>No batch decisions yet.</p>)}
         {tab === 'Actions' && <>{caseInfo.actions.length ? <div className={styles.scroll}><table><thead><tr><th>Type</th><th>Target</th><th>Status</th><th>Approval</th></tr></thead><tbody>{caseInfo.actions.map(action => <tr key={action.id}><td>{label(action.type)}</td><td>{describeAction(action, caseInfo.trace)}<ActionDetail action={action} /></td><td><Chip tone={actionTone(action.status)}>{label(action.status)}</Chip></td><td>{action.requires_approval ? action.status === 'PENDING_APPROVAL' ? <>{user?.role === 'qa_manager' && token ? <ApprovalDecision action={action} description={describeAction(action, caseInfo.trace)} token={token} onDecision={decided} /> : user?.role === 'qa_specialist' ? 'A QA manager must approve.' : 'Approval required.'}{user?.role !== 'shipping_supervisor' && <Link to="/approvals">Open queue</Link>}</> : 'Required' : 'Not required'}</td></tr>)}</tbody></table></div> : <p>No actions yet.</p>}{heldBatches.length > 0 && token && user && <section><h3>Held batches</h3>{heldBatches.map(batchId => <HeldBatchControls key={batchId} token={token} role={user.role} caseId={id} batchId={batchId} onAction={releaseRequested} />)}</section>}</>}
-        {tab === 'Timeline' && <>{timelineError && <p role="alert" className={styles.error}>{timelineError}</p>}<button onClick={() => void loadTimeline()}>Refresh timeline</button>{events ? <Timeline events={events} /> : !timelineError && <p role="status">Loading timeline…</p>}</>}
+        {tab === 'Timeline' && <>{timelineError && <p role="alert" className={styles.error}>{timelineError}</p>}<button onClick={() => void loadTimeline()}>Refresh timeline</button>{chain && <p role="status" className={chain.valid ? styles.success : styles.error}>{chain.valid ? `Audit hash chain verified · ${chain.events} events` : `Audit hash chain broken at ${chain.first_invalid_event_id}`}</p>}{events ? <Timeline events={events} /> : !timelineError && <p role="status">Loading timeline…</p>}</>}
       </section></>}
   </main>;
 }

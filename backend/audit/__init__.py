@@ -26,3 +26,13 @@ def append_event(db: Session, case_id: str, actor: str, kind: str, payload: dict
                        hash=event_hash(prev, case_id, ts, actor, kind, payload))
     db.add(event)
     return event
+
+
+def verify_chain(events: list[AuditEvent]) -> dict:
+    """Recompute every hash in order (oldest first). Any edited, deleted or reordered event breaks the chain."""
+    prev = None
+    for e in events:
+        if e.prev_hash != prev or e.hash != event_hash(prev, e.case_id, e.ts, e.actor, e.kind, e.payload):
+            return {"valid": False, "events": len(events), "first_invalid_event_id": f"e_{e.id:06d}"}
+        prev = e.hash
+    return {"valid": True, "events": len(events), "first_invalid_event_id": None}

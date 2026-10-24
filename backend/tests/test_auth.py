@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from api.auth import make_token
 from api.main import create_app
+from api.settings import Settings
 from tests.conftest import assert_matches
 
 DEMO_USERS = {
@@ -12,7 +13,6 @@ DEMO_USERS = {
     "daniel.qam": "qa_manager",
     "marco.ship": "shipping_supervisor",
     "admin": "admin",
-    "labellock-agent": "agent",
 }
 
 
@@ -50,6 +50,17 @@ def test_login_succeeds_for_each_demo_user(client, username, role):
     assert me.status_code == 200
     assert_matches("User", me.json())
     assert me.json() == body["user"]
+
+
+def test_agent_service_account_cannot_sign_in(client):
+    r = client.post("/api/auth/login", json={"username": "labellock-agent", "password": "demo"})
+    assert_error(r, 403, "FORBIDDEN")
+
+
+def test_refuses_shipped_secrets_outside_demo_mode(tmp_path):
+    with pytest.raises(RuntimeError, match="AUTH_SECRET and SIM_API_KEY"):
+        create_app(Settings(database_url=f"sqlite:///{(tmp_path / 'a.db').as_posix()}", demo_mode=False))
+    assert Settings(auth_secret="x", sim_api_key="y").insecure_defaults() == []
 
 
 def test_bad_password_is_401(client):

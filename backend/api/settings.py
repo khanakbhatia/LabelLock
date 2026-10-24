@@ -34,6 +34,11 @@ class Settings:
     eval_results_path: Path = REPO_ROOT / "backend" / "scenarios" / "results" / "latest.json"
     roi_assumptions_path: Path = REPO_ROOT / "backend" / "config" / "roi_assumptions.json"
 
+    def insecure_defaults(self) -> list[str]:
+        """Shipped development secrets still in use; only acceptable with DEMO_MODE=true."""
+        return [name for name, value, default in (("AUTH_SECRET", self.auth_secret, Settings.auth_secret),
+                                                  ("SIM_API_KEY", self.sim_api_key, Settings.sim_api_key)) if value == default]
+
     @property
     def cors_origins(self) -> list[str]:
         return [o for o in (self.cors_origin, self.extension_origin) if o]
