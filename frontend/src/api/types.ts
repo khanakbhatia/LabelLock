@@ -48,6 +48,7 @@ export interface CaseMetrics { agent_started_at: string | null; elapsed_seconds:
 export interface CaseDetail { id: string; status: CaseStatus; notice: NoticeRef; extraction: Extraction | null; trace: Trace | null; batch_decisions: BatchDecisionRow[]; actions: Action[]; metrics: CaseMetrics; duplicate_of?: string | null; opened_at?: string; contained_at?: string | null; uncertainty_flags?: UncertaintyFlag[] }
 export interface RunStarted { case_id: string; run_id: string }
 export interface AuditEvent { id: string; case_id: string; ts: string; actor: string; kind: string; payload: Record<string, unknown>; prev_hash: string | null; hash: string }
+export interface AuditVerification { valid: boolean; events: number; first_invalid_event_id: string | null }
 export interface ReportBatch { batch_id: string; decision: BatchDecision; final_state: string; verified: boolean }
 export interface CaseReport { case_id: string; status: CaseStatus; opened_at: string; contained_at: string | null; batches: ReportBatch[]; action_counts: Partial<Record<ActionStatus, number>>; metrics: CaseMetrics & { seconds_to_contained: number | null } }
 export interface IngestEmailRequest { gmail_message_id: string; thread_id: string; from: string; subject: string; body_text: string; received_at: string; attachments: { filename: string; mime_type: 'application/pdf'; content_base64: string }[] }
@@ -69,6 +70,7 @@ export interface LabelLockApi {
   getCase(token: string, id: string): Promise<CaseDetail>;
   listCases(token: string): Promise<CaseSummary[]>;
   getTimeline(token: string, id: string): Promise<AuditEvent[]>;
+  verifyTimeline(token: string, id: string): Promise<AuditVerification>;
   getReport(token: string, id: string): Promise<CaseReport>;
   runCase(token: string, id: string): Promise<RunStarted>;
   listApprovals(token: string, status?: ActionStatus): Promise<Action[]>;

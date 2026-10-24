@@ -7,7 +7,7 @@ import { homeFor, useAuth } from '../auth';
 const demos = [
   { username: 'valley.ingredients', role: 'Supplier' }, { username: 'priya.qa', role: 'QA specialist' },
   { username: 'daniel.qam', role: 'QA manager' }, { username: 'marco.ship', role: 'Shipping supervisor' },
-  { username: 'admin', role: 'Admin' }, { username: 'labellock-agent', role: 'Agent service account' },
+  { username: 'admin', role: 'Admin' },
 ];
 export function Login() {
   const { login } = useAuth();

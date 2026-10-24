@@ -55,6 +55,7 @@ describe('case workspace', () => {
     expect(screen.getByText('VERIFY FAILED')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('tab', { name: 'Timeline' }));
     expect(await screen.findByText('NOTICE RECEIVED')).toBeInTheDocument();
+    expect(await screen.findByText(/Audit hash chain verified/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'View report' }));
     expect(await screen.findByRole('region', { name: 'Case report' })).toHaveTextContent('431');
   });

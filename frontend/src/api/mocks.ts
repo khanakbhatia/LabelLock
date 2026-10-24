@@ -13,7 +13,7 @@ import approvalExample from '../../../contracts/examples/approvals.json';
 import ingestExample from '../../../contracts/examples/ingest_email_response.json';
 import roiExample from '../../../contracts/examples/roi_summary.json';
 import benchmarkExample from '../../../contracts/examples/benchmark.json';
-import { ApiError, type Action, type ActionStatus, type AuditEvent, type Benchmark, type CaseDetail, type CaseReport, type CaseSummary, type Disposition, type ErrorCode, type InboxItem, type IngestEmailResponse, type LabelLockApi, type Notice, type NoticeSummary, type RoiSummary, type Role, type UncertaintyFlag, type User } from './types';
+import { ApiError, type Action, type ActionStatus, type AuditEvent, type AuditVerification, type Benchmark, type CaseDetail, type CaseReport, type CaseSummary, type Disposition, type ErrorCode, type InboxItem, type IngestEmailResponse, type LabelLockApi, type Notice, type NoticeSummary, type RoiSummary, type Role, type UncertaintyFlag, type User } from './types';
 
 const users: Record<string, User> = {
   'valley.ingredients': { id: 'u_valley', name: 'Valley Ingredients', role: 'supplier' },
@@ -67,6 +67,7 @@ export const mocks: LabelLockApi = {
   async login(username, password) {
     await delay();
     if (password !== 'demo' || !users[username]) return error(401, 'UNAUTHENTICATED', 'Invalid username or password');
+    if (users[username].role === 'agent') return error(403, 'FORBIDDEN', 'Service accounts cannot sign in');
     return { ...loginExample, token: `mock:${username}`, user: users[username] };
   },
   async me(token) { await delay(); return userFor(token); },
@@ -126,6 +127,7 @@ export const mocks: LabelLockApi = {
     if (casesError) return error(502, 'UPSTREAM_FAILED', 'Cases temporarily unavailable');
     return [...added.map(n => ({ id: n.case_id, notice_id: n.id, status: runState[n.case_id] ?? 'RECEIVED', supplier: n.supplier, subject: n.subject, opened_at: n.received_at, contained_at: null, duplicate_of: null, pending_approvals: 0, uncertainty_flags: [] } as CaseSummary)), ...(caseList as CaseSummary[]).map(c => ({ ...c, status: runState[c.id] ?? c.status, uncertainty_flags: c.id === 'c_001' ? caseFlags : c.uncertainty_flags }))].map(c => ({ ...c, pending_approvals: approvals.filter(a => a.case_id === c.id && a.status === 'PENDING_APPROVAL').length })).sort((a, b) => b.opened_at.localeCompare(a.opened_at));
   },
+  async verifyTimeline(token, id): Promise<AuditVerification> { await delay(); requireRole(token, ['qa_specialist', 'qa_manager', 'shipping_supervisor']); return { valid: true, events: id === 'c_001' ? timelineExample.length : 0, first_invalid_event_id: null }; },
   async getTimeline(token, id) { await delay(); requireRole(token, ['qa_specialist', 'qa_manager', 'shipping_supervisor']); if (id !== 'c_001') return []; return timelineExample as AuditEvent[]; },
   async getReport(token, id) { await delay(); requireRole(token, ['qa_specialist', 'qa_manager']); if (id !== 'c_001') return error(404, 'NOT_FOUND', 'Report not found'); return reportExample as CaseReport; },
   async runCase(token, id) {
